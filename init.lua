@@ -28,7 +28,66 @@ require("lazy").setup({
                         },
                     },
                 },
+                dap = {
+                    adapter = {
+                        type = "server",
+                        port = "${port}",
+                        executable = {
+                            command = vim.fn.expand("~/.local/opt/codelldb/extension/adapter/codelldb"),
+                            args = { "--port", "${port}" },
+                        },
+                    },
+                },
             }
+        end,
+    },
+    {
+        "mfussenegger/nvim-dap",
+    },
+    {
+        "rcarriga/nvim-dap-ui",
+        dependencies = {
+            "mfussenegger/nvim-dap",
+            "nvim-neotest/nvim-nio",
+        },
+        config = function()
+            local dap = require("dap")
+            local dapui = require("dapui")
+
+            dapui.setup({
+                layouts = {
+                    {
+                        elements = {
+                            { id = "scopes", size = 0.35 },
+                            { id = "watches", size = 0.20 },
+                            { id = "breakpoints", size = 0.20 },
+                            { id = "stacks", size = 0.25 },
+                        },
+                        size = 40,
+                        position = "right",
+                    },
+                    {
+                        elements = {
+                            { id = "repl", size = 1 },
+                        },
+                        size = 10,
+                        position = "bottom",
+                    },
+                },
+            })
+
+            dap.listeners.before.attach.dapui_config = function()
+                dapui.open()
+            end
+            dap.listeners.before.launch.dapui_config = function()
+                dapui.open()
+            end
+            dap.listeners.before.event_terminated.dapui_config = function()
+                dapui.close()
+            end
+            dap.listeners.before.event_exited.dapui_config = function()
+                dapui.close()
+            end
         end,
     },
     {
@@ -76,7 +135,8 @@ require("lazy").setup({
                 },
             })
         end,
-    },{
+    },
+    {
         "nvim-neo-tree/neo-tree.nvim",
         branch = "v3.x",
         dependencies = {
@@ -103,14 +163,14 @@ require("lazy").setup({
                 },
             })
         end,
-    },{
+    },
+    {
         "folke/tokyonight.nvim",
-        priority = 1000, -- load first
+        priority = 1000,
         config = function()
             vim.cmd.colorscheme("tokyonight")
         end,
     },
-
 })
 
 -- UI
@@ -150,12 +210,46 @@ vim.keymap.set("n", "<leader>fh", builtin.help_tags, { desc = "Help tags" })
 vim.keymap.set("n", "<leader>t1", ":ToggleTerm 1<CR>")
 vim.keymap.set("n", "<leader>t2", ":ToggleTerm 2<CR>")
 vim.keymap.set("n", "<leader>t3", ":ToggleTerm 3<CR>")
-
 vim.keymap.set("t", "<Esc>", [[<C-\><C-n>]], { desc = "Exit terminal mode" })
 
 -- Tree map
 vim.keymap.set("n", "<leader>n", ":Neotree filesystem reveal left toggle<CR>", { desc = "Workspace tree" })
 
+-- Debugger bindings
+vim.keymap.set("n", "<leader>db", function()
+    require("dap").toggle_breakpoint()
+end, { desc = "Toggle breakpoint" })
+
+vim.keymap.set("n", "<leader>dc", function()
+    require("dap").continue()
+end, { desc = "Debug continue" })
+
+vim.keymap.set("n", "<leader>do", function()
+    require("dap").step_over()
+end, { desc = "Debug step over" })
+
+vim.keymap.set("n", "<leader>di", function()
+    require("dap").step_into()
+end, { desc = "Debug step into" })
+
+vim.keymap.set("n", "<leader>dO", function()
+    require("dap").step_out()
+end, { desc = "Debug step out" })
+
+vim.keymap.set("n", "<leader>du", function()
+    require("dapui").toggle()
+end, { desc = "Debug UI" })
+
+vim.keymap.set("n", "<leader>dt", function()
+    require("dap").terminate()
+end, { desc = "Debug terminate" })
+
+vim.keymap.set("n", "<leader>dw", function()
+    local expr = vim.fn.input("Watch: ")
+    if expr ~= "" then
+        require("dapui").elements.watches.add(expr)
+    end
+end, { desc = "Add watch" })
 
 -- Diagnostics display
 vim.diagnostic.config({
@@ -172,4 +266,29 @@ vim.api.nvim_create_autocmd("BufWritePre", {
     callback = function()
         vim.lsp.buf.format({ async = false })
     end,
+})
+
+-- DAP signs (debugger icons in gutter)
+vim.fn.sign_define("DapBreakpoint", {
+    text = "●",
+    texthl = "Error",
+    linehl = "",
+    numhl = "",
+})
+
+vim.fn.sign_define("DapBreakpointCondition", {
+    text = "◆",
+    texthl = "WarningMsg",
+})
+
+vim.fn.sign_define("DapLogPoint", {
+    text = "▶",
+    texthl = "Identifier",
+})
+
+vim.fn.sign_define("DapStopped", {
+    text = "→",
+    texthl = "String",
+    linehl = "Visual",
+    numhl = "",
 })
