@@ -19,4 +19,17 @@ vim.lsp.config("clangd", {
 
 vim.lsp.enable("clangd")
 
-return {}
+return {
+    {
+        -- Dummy spec so lazy.nvim picks up this file; clangd is configured above via native vim.lsp.config
+        dir = ".",
+        name = "cpp-keymaps",
+        ft = { "c", "cpp", "objc", "objcpp" },
+        config = function()
+            vim.keymap.set("n", "<leader>ch", "<cmd>LspClangdSwitchSourceHeader<CR>", {
+                desc = "Switch header/source",
+                buffer = false,
+            })
+        end,
+    },
+}

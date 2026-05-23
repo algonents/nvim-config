@@ -1,6 +1,34 @@
 return {
     {
         "mfussenegger/nvim-dap",
+        config = function()
+            local dap = require("dap")
+
+            -- codelldb adapter (shared by Rust via rustaceanvim and C/C++)
+            dap.adapters.codelldb = {
+                type = "server",
+                port = "${port}",
+                executable = {
+                    command = vim.fn.expand("~/.local/opt/codelldb/extension/adapter/codelldb"),
+                    args = { "--port", "${port}" },
+                },
+            }
+
+            -- C/C++ debug configuration
+            dap.configurations.c = {
+                {
+                    name = "Launch (codelldb)",
+                    type = "codelldb",
+                    request = "launch",
+                    program = function()
+                        return vim.fn.input("Executable: ", vim.fn.getcwd() .. "/build/", "file")
+                    end,
+                    cwd = "${workspaceFolder}",
+                    stopOnEntry = false,
+                },
+            }
+            dap.configurations.cpp = dap.configurations.c
+        end,
     },
     {
         "rcarriga/nvim-dap-ui",

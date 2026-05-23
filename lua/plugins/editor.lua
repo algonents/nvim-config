@@ -3,7 +3,11 @@ return {
         "nvim-telescope/telescope.nvim",
         dependencies = {
             "nvim-lua/plenary.nvim",
+            { "nvim-telescope/telescope-fzf-native.nvim", build = "make" },
         },
+        config = function()
+            require("telescope").load_extension("fzf")
+        end,
     },
     {
         "nvim-treesitter/nvim-treesitter",
@@ -22,6 +26,7 @@ return {
                     "json",
                     "markdown",
                     "markdown_inline",
+                    "cmake",
                 },
                 highlight = { enable = true },
                 indent = { enable = true },
@@ -71,6 +76,17 @@ return {
                 window = {
                     position = "left",
                     width = 32,
+                    mappings = {
+                        ["O"] = {
+                            function(state)
+                                local node = state.tree:get_node()
+                                if node and node.type == "file" then
+                                    vim.ui.open(node.path)
+                                end
+                            end,
+                            desc = "Open externally",
+                        },
+                    },
                 },
             })
         end,
@@ -80,6 +96,35 @@ return {
         priority = 1000,
         config = function()
             vim.cmd.colorscheme("tokyonight")
+        end,
+    },
+    {
+        "lewis6991/gitsigns.nvim",
+        config = function()
+            require("gitsigns").setup({
+                signs = {
+                    add = { text = "│" },
+                    change = { text = "│" },
+                    delete = { text = "_" },
+                    topdelete = { text = "‾" },
+                    changedelete = { text = "~" },
+                },
+                current_line_blame = true,
+            })
+        end,
+    },
+    {
+        "folke/which-key.nvim",
+        event = "VeryLazy",
+        config = function()
+            require("which-key").setup()
+        end,
+    },
+    {
+        "folke/trouble.nvim",
+        dependencies = { "nvim-tree/nvim-web-devicons" },
+        config = function()
+            require("trouble").setup()
         end,
     },
 }
