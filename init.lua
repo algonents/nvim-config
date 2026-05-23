@@ -23,7 +23,20 @@ vim.opt.expandtab = true
 vim.opt.shiftwidth = 4
 vim.opt.tabstop = 4
 vim.opt.mouse = "a"
+vim.opt.wrap = true
+vim.opt.linebreak = true
+vim.opt.breakindent = true
 vim.opt.signcolumn = "yes"
+
+-- Arrow keys navigate by display line (wrapped rows)
+vim.keymap.set({ "n", "v" }, "<Down>", "gj", { desc = "Down (display line)" })
+vim.keymap.set({ "n", "v" }, "<Up>", "gk", { desc = "Up (display line)" })
+vim.keymap.set({ "n", "v" }, "<Home>", "g<Home>", { desc = "Start of display line" })
+vim.keymap.set({ "n", "v" }, "<End>", "g<End>", { desc = "End of display line" })
+vim.keymap.set("i", "<Down>", "<C-o>gj", { desc = "Down (display line)" })
+vim.keymap.set("i", "<Up>", "<C-o>gk", { desc = "Up (display line)" })
+vim.keymap.set("i", "<Home>", "<C-o>g<Home>", { desc = "Start of display line" })
+vim.keymap.set("i", "<End>", "<C-o>g<End>", { desc = "End of display line" })
 
 -- Clipboard
 vim.opt.clipboard = "unnamedplus"
@@ -31,7 +44,7 @@ vim.opt.clipboard = "unnamedplus"
 -- LSP keymaps
 vim.keymap.set("n", "gd", vim.lsp.buf.definition, { desc = "Go to definition" })
 vim.keymap.set("n", "K", vim.lsp.buf.hover, { desc = "Hover docs" })
-vim.keymap.set("n", "gr", vim.lsp.buf.references, { desc = "Find references" })
+vim.keymap.set("n", "<leader>fr", require("telescope.builtin").lsp_references, { desc = "Find references" })
 vim.keymap.set("n", "<leader>rn", vim.lsp.buf.rename, { desc = "Rename symbol" })
 vim.keymap.set("n", "<leader>ca", vim.lsp.buf.code_action, { desc = "Code action" })
 
@@ -54,8 +67,43 @@ vim.keymap.set("n", "<leader>t2", ":ToggleTerm 2<CR>")
 vim.keymap.set("n", "<leader>t3", ":ToggleTerm 3<CR>")
 vim.keymap.set("t", "<Esc>", [[<C-\><C-n>]], { desc = "Exit terminal mode" })
 
+-- Claude sessions (right-side vertical panels, ~50% width, persistent, one visible at a time)
+local claude_terms = {}
+local function toggle_claude(id)
+    if not claude_terms[id] then
+        local Terminal = require("toggleterm.terminal").Terminal
+        claude_terms[id] = Terminal:new({
+            cmd = "claude",
+            direction = "vertical",
+            size = function() return math.floor(vim.o.columns * 0.5) end,
+            hidden = true,
+            on_open = function() vim.cmd("startinsert!") end,
+        })
+    end
+    local target = claude_terms[id]
+    local target_was_open = target:is_open()
+    for other_id, term in pairs(claude_terms) do
+        if other_id ~= id and term:is_open() then
+            term:close()
+        end
+    end
+    if target_was_open then
+        target:close()
+    else
+        target:open()
+    end
+end
+vim.keymap.set("n", "<leader>c1", function() toggle_claude(1) end, { desc = "Toggle Claude 1" })
+vim.keymap.set("n", "<leader>c2", function() toggle_claude(2) end, { desc = "Toggle Claude 2" })
+vim.keymap.set("n", "<leader>c3", function() toggle_claude(3) end, { desc = "Toggle Claude 3" })
+
 -- Tree map
 vim.keymap.set("n", "<leader>n", ":Neotree filesystem reveal left toggle<CR>", { desc = "Workspace tree" })
+
+-- Open current file in default external app (e.g. PNG → image viewer)
+vim.keymap.set("n", "<leader>i", function()
+    vim.ui.open(vim.fn.expand("%"))
+end, { desc = "Open file externally" })
 
 -- Debugger bindings
 vim.keymap.set("n", "<leader>db", function()
@@ -92,6 +140,14 @@ vim.keymap.set("n", "<leader>dw", function()
         require("dapui").elements.watches.add(expr)
     end
 end, { desc = "Add watch" })
+
+-- Trouble (diagnostics panel)
+vim.keymap.set("n", "<leader>xx", "<cmd>Trouble diagnostics toggle<CR>", { desc = "Diagnostics (Trouble)" })
+vim.keymap.set("n", "<leader>xd", "<cmd>Trouble diagnostics toggle filter.buf=0<CR>", { desc = "Buffer diagnostics (Trouble)" })
+
+-- Gitsigns navigation
+vim.keymap.set("n", "]h", function() require("gitsigns").nav_hunk("next") end, { desc = "Next git hunk" })
+vim.keymap.set("n", "[h", function() require("gitsigns").nav_hunk("prev") end, { desc = "Previous git hunk" })
 
 -- Diagnostics display
 vim.diagnostic.config({
