@@ -62,10 +62,19 @@ return {
                 },
             })
 
+            local function close_terminals()
+                local ok, tt = pcall(require, "toggleterm.terminal")
+                if not ok then return end
+                for _, t in ipairs(tt.get_all()) do
+                    if t:is_open() then t:close() end
+                end
+            end
             dap.listeners.before.attach.dapui_config = function()
+                close_terminals()
                 dapui.open()
             end
             dap.listeners.before.launch.dapui_config = function()
+                close_terminals()
                 dapui.open()
             end
             dap.listeners.before.event_terminated.dapui_config = function()

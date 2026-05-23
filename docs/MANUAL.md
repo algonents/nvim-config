@@ -180,6 +180,98 @@ the buffer/window/tab model and key bindings (`gd`, `gr`, splits) are Vim
 heritage; the `vim.lsp`, `vim.keymap.set`, `lazy.nvim`, and Lua are all
 Neovim's additions.
 
+## Hybrid Rust/C++ debugging
+
+The DAP setup uses codelldb as the adapter for both Rust (via
+rustaceanvim) and C/C++. Because both languages compile down through
+the same toolchain target with debug symbols, a single codelldb session
+can step seamlessly between Rust and C++ frames — set breakpoints in
+either language, see mixed call stacks, inspect variables on both sides.
+
+The canonical test case below uses [wilhelm_renderer](https://github.com/algonents/wilhelm_renderer):
+a Rust crate whose `wilhelm_renderer_sys` subcrate compiles C++ via
+`build.rs` and links it into the final binary.
+
+### 1. Build with debug symbols
+
+```shell
+cd ~/Repos/wilhelm_renderer
+cargo build --example triangle
+```
+
+The debug profile (default for `cargo build`) passes `-g` to rustc *and*
+— via `cc-rs` in `build.rs` — to the C++ compiler. Both halves of the
+binary end up with debug info.
+
+Output: `target/debug/examples/triangle`.
+
+### 2. Open Neovim from the project root
+
+```shell
+cd ~/Repos/wilhelm_renderer
+nvim wilhelm_renderer_sys/cpp/glrenderer.cpp
+```
+
+Launching from the project root matters: the DAP "Executable:" prompt
+defaults to `<cwd>/build/`, so relative paths like `target/debug/...`
+resolve correctly.
+
+### 3. Set a breakpoint
+
+Move the cursor to a line inside a C++ function that the example will
+hit (e.g. `glfwSetErrorCallback(glfwErrorCallback);` inside
+`_glfwCreateWindow` — runs early in the Rust→C++ FFI path). Press
+`<Space>db`. A red `●` appears in the sign column.
+
+### 4. Launch the debug session
+
+Press `<Space>dc`. Two prompts appear:
+
+- **"Select a configuration:"** → pick `Launch (codelldb)`
+- **"Executable:"** → clear the default (`<C-u>` clears the line) and
+  type the path to the built binary:
+  ```
+  target/debug/examples/triangle
+  ```
+
+Open the DAP UI with `<Space>du` if it didn't auto-open (scopes,
+watches, call stack, REPL).
+
+### 5. Step around
+
+The example launches, opens its window, and stops at your breakpoint.
+
+| Key | Action |
+|---|---|
+| `<Space>do` | Step over |
+| `<Space>di` | Step into |
+| `<Space>dO` | Step out |
+| `<Space>dc` | Continue |
+| `<Space>dw` | Add watch expression |
+| `<Space>dt` | Terminate session |
+
+### What "working" looks like
+
+- The call stack contains **both Rust and C++ frames**, intermixed
+  (e.g. `triangle::main` → `wilhelm_renderer::...` → `_glfwCreateWindow`).
+  That's the hybrid setup proving itself.
+- Variable inspection (hover, watches, scopes) works in either language.
+- Breakpoints in `.rs` files under `wilhelm_renderer/src/` or
+  `wilhelm_renderer_sys/src/` hit the same way as the C++ ones.
+
+### If the breakpoint stays "unverified" (hollow)
+
+The C++ side wasn't built with debug symbols — `build.rs` cached an old
+release-mode object. Force a rebuild:
+
+```shell
+cargo clean -p wilhelm_renderer_sys
+cargo build --example triangle
+```
+
+`cargo clean -p <subcrate>` blows away that crate's build artifacts so
+`build.rs` re-runs with the current profile's flags.
+
 ## Modes — the central reflex
 
 Not a UI region but inseparable from how Neovim feels.

@@ -75,9 +75,12 @@ local function toggle_claude(id)
         claude_terms[id] = Terminal:new({
             cmd = "claude",
             direction = "vertical",
-            size = function() return math.floor(vim.o.columns * 0.5) end,
+            size = function() return math.floor(vim.o.columns * 0.3) end,
             hidden = true,
-            on_open = function() vim.cmd("startinsert!") end,
+            on_open = function(term)
+                vim.cmd("vertical resize " .. math.floor(vim.o.columns * 0.3))
+                vim.cmd("startinsert!")
+            end,
         })
     end
     local target = claude_terms[id]
