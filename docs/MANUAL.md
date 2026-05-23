@@ -180,6 +180,94 @@ the buffer/window/tab model and key bindings (`gd`, `gr`, splits) are Vim
 heritage; the `vim.lsp`, `vim.keymap.set`, `lazy.nvim`, and Lua are all
 Neovim's additions.
 
+## C++ symbols — generating `compile_commands.json`
+
+clangd (the C++ LSP) needs to know each translation unit's compile flags
+— include paths, defines, language standard, etc. — to resolve symbols,
+find references, and surface accurate diagnostics. Without that, every
+`#include` looks unresolved, every macro is unknown, and the buffer is
+buried in red squiggles even though the project compiles fine via its
+real build system.
+
+The contract is a file called `compile_commands.json`: a JSON array of
+`{file, directory, command}` records, one per compiled source. clangd
+loads it at startup and uses it as ground truth.
+
+### Generate it from a CMake project
+
+```shell
+cmake -S <cmake-source-dir> -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+```
+
+- `-S <dir>` — the directory containing `CMakeLists.txt`.
+- `-B build` — output directory. This config's clangd is set to look in
+  `build/` (via `--compile-commands-dir=build`), so use that name.
+- `-DCMAKE_EXPORT_COMPILE_COMMANDS=ON` — the switch that asks CMake to
+  emit the file alongside the build artifacts.
+
+CMake writes `build/compile_commands.json` and `build/CMakeCache.txt`.
+Only the JSON matters for clangd; the rest is the actual build tree
+(safe to delete if you only care about LSP).
+
+### When the C++ lives in a subdirectory
+
+If the project root isn't where `CMakeLists.txt` is — e.g. a Rust crate
+with a C++ sys subcrate — point `-S` at the C++ directory but run the
+command from the project root so the resulting `build/` is at the root:
+
+```shell
+cd ~/Repos/my_project
+cmake -S subcrate/cpp -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+```
+
+clangd opens the file at `subcrate/cpp/foo.cpp`, walks up looking for
+`compile_commands.json` (or the `--compile-commands-dir` hint), finds
+`build/compile_commands.json` at the root, and uses the matching entry.
+
+### When to regenerate
+
+- New source files added or moved.
+- `CMakeLists.txt` changes (new include paths, defines, flags).
+- After cloning a project for the first time.
+- After restructuring the directory layout.
+
+If sources don't move and flags don't change, you don't need to re-run
+it. `build/` is typically gitignored.
+
+### Picking up the new file in a running Neovim session
+
+clangd reads `compile_commands.json` once at startup. After regenerating,
+either:
+
+```vim
+:e
+```
+
+— reloads the current buffer and re-attaches LSP, *or*
+
+```vim
+:lua vim.lsp.stop_client(vim.lsp.get_clients({ name = "clangd" }))
+```
+
+— stops clangd; it auto-restarts on the next C/C++ buffer open. Closing
+and reopening Neovim is the brute-force equivalent.
+
+### When clangd still complains after regenerating
+
+- Verify the regenerated file references the *current* source paths:
+  ```shell
+  head -20 build/compile_commands.json
+  ```
+  Each `"file": "..."` should be an absolute path that exists.
+- Confirm clangd is finding it:
+  ```vim
+  :lua print(vim.inspect(vim.lsp.get_clients({ name = "clangd" })[1].config))
+  ```
+- Look at clangd's log for "Loaded compilation database" or errors:
+  ```shell
+  tail -f ~/.local/state/nvim/lsp.log
+  ```
+
 ## Modes — the central reflex
 
 Not a UI region but inseparable from how Neovim feels.
