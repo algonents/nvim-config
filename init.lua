@@ -67,34 +67,54 @@ vim.keymap.set("n", "<leader>t2", ":ToggleTerm 2<CR>")
 vim.keymap.set("n", "<leader>t3", ":ToggleTerm 3<CR>")
 vim.keymap.set("t", "<Esc>", [[<C-\><C-n>]], { desc = "Exit terminal mode" })
 
--- Claude sessions (right-side vertical panels, ~50% width, persistent, one visible at a time)
-local claude_terms = {}
-local function toggle_claude(id)
-    if not claude_terms[id] then
-        local Terminal = require("toggleterm.terminal").Terminal
-        claude_terms[id] = Terminal:new({
-            cmd = "claude",
-            direction = "vertical",
-            size = function() return math.floor(vim.o.columns * 0.3) end,
-            hidden = true,
-            on_open = function(term)
-                vim.cmd("vertical resize " .. math.floor(vim.o.columns * 0.3))
-                vim.cmd("startinsert!")
-            end,
-        })
+-- Auto-enter Terminal-Job mode when focusing any terminal buffer
+vim.api.nvim_create_autocmd({ "BufEnter", "WinEnter" }, {
+    pattern = "term://*",
+    callback = function() vim.cmd("startinsert") end,
+})
+
+-- Claude sessions: first one opens as right vertical split (~30% width).
+-- Additional ones stack vertically (horizontal splits) inside that right column.
+local claude_bufs = {}
+local function find_window_with_buf(buf)
+    for _, win in ipairs(vim.api.nvim_list_wins()) do
+        if vim.api.nvim_win_get_buf(win) == buf then return win end
     end
-    local target = claude_terms[id]
-    local target_was_open = target:is_open()
-    for other_id, term in pairs(claude_terms) do
-        if other_id ~= id and term:is_open() then
-            term:close()
+    return nil
+end
+local function find_any_claude_window()
+    for _, buf in pairs(claude_bufs) do
+        if vim.api.nvim_buf_is_valid(buf) then
+            local win = find_window_with_buf(buf)
+            if win then return win end
         end
     end
-    if target_was_open then
-        target:close()
-    else
-        target:open()
+    return nil
+end
+local function toggle_claude(id)
+    local buf = claude_bufs[id]
+    if buf and vim.api.nvim_buf_is_valid(buf) then
+        local win = find_window_with_buf(buf)
+        if win then
+            vim.api.nvim_win_close(win, false)
+            return
+        end
     end
+    local other_claude_win = find_any_claude_window()
+    if other_claude_win then
+        vim.api.nvim_set_current_win(other_claude_win)
+        vim.cmd("belowright split")
+    else
+        vim.cmd("botright vsplit")
+        vim.cmd("vertical resize " .. math.floor(vim.o.columns * 0.3))
+    end
+    if buf and vim.api.nvim_buf_is_valid(buf) then
+        vim.api.nvim_win_set_buf(0, buf)
+    else
+        vim.cmd("terminal claude")
+        claude_bufs[id] = vim.api.nvim_get_current_buf()
+    end
+    vim.cmd("startinsert!")
 end
 vim.keymap.set("n", "<leader>c1", function() toggle_claude(1) end, { desc = "Toggle Claude 1" })
 vim.keymap.set("n", "<leader>c2", function() toggle_claude(2) end, { desc = "Toggle Claude 2" })

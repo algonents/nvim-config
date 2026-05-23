@@ -63,10 +63,11 @@ return {
             })
 
             local function close_terminals()
-                local ok, tt = pcall(require, "toggleterm.terminal")
-                if not ok then return end
-                for _, t in ipairs(tt.get_all()) do
-                    if t:is_open() then t:close() end
+                for _, win in ipairs(vim.api.nvim_list_wins()) do
+                    local buf = vim.api.nvim_win_get_buf(win)
+                    if vim.api.nvim_buf_is_valid(buf) and vim.bo[buf].buftype == "terminal" then
+                        pcall(vim.api.nvim_win_close, win, false)
+                    end
                 end
             end
             dap.listeners.before.attach.dapui_config = function()
