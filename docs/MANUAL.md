@@ -283,3 +283,76 @@ Not a UI region but inseparable from how Neovim feels.
 | Visual | `v`/`V`/`<C-v>` | Select |
 | Command | `:` | Run ex commands |
 | Terminal | inside a terminal buffer, `i` | Type into shell/claude |
+
+## Muscle-memory cheat sheet
+
+The keys worth committing to reflex — the ones you'll hit dozens of times
+an hour. Everything else can stay in which-key: tap `<Space>` and pause to
+let the popup show you what's bound.
+
+### Find and open
+
+| Key | Action |
+|---|---|
+| `<Space>ff` | Find files (Telescope) |
+| `<Space>fg` | Live grep across the repo |
+| `<Space>fb` | Find open buffers |
+| `<Space>fr` | Find references to symbol under cursor |
+| `<Space>n`  | Toggle the file tree (neo-tree) |
+
+### Code intelligence (LSP)
+
+| Key | Action |
+|---|---|
+| `gd`        | Go to definition |
+| `K`         | Hover docs (floating) |
+| `<Space>ca` | Code action (the lightbulb) |
+| `<Space>rn` | Rename symbol across the project |
+| `[d` / `]d` | Prev / next diagnostic |
+| `<Space>e`  | Show diagnostic for current line |
+
+Note: bare chords (`gd`, `K`, `[d`/`]d`) follow Vim's built-in conventions —
+`g`-prefix for "go" actions, `K` for "look up", `[`/`]` for prev/next motions —
+so they match what experienced Vim users already type. Editor-extension
+features (rename, code action, diagnostic float) live behind `<Space>` to
+keep the bare keyspace clean.
+
+### Companion panes
+
+| Key | Action |
+|---|---|
+| `<Space>c1` / `c2` / `c3` | Toggle Claude Code session 1 / 2 / 3 (right column) |
+| `<Space>t1` / `t2` / `t3` | Toggle terminal 1 / 2 / 3 (bottom row) |
+| `<Space>xx`               | Toggle Trouble diagnostics panel |
+| `<Space>du`               | Toggle DAP UI |
+
+### Window navigation
+
+| Key | Action |
+|---|---|
+| `<A-Up>` / `<A-Down>` / `<A-Left>` / `<A-Right>` | Move between windows (also works from inside terminal TUIs) |
+| `<Esc>` (in a terminal) | Drop from Terminal mode back to Normal |
+
+### Debug (DAP)
+
+| Key | Action |
+|---|---|
+| `<Space>db` | Toggle breakpoint |
+| `<Space>dc` | Continue / start session |
+| `<Space>do` | Step over |
+| `<Space>di` | Step into |
+| `<Space>dw` | Add watch expression |
+| `<Space>dt` | Terminate session |
+
+### Git (gitsigns)
+
+| Key | Action |
+|---|---|
+| `]h` / `[h` | Next / previous git hunk in this file |
+
+### The reflex loop
+
+If you internalize just three groups — **find** (`ff`/`fg`/`n`), **jump**
+(`gd`/`K`/`<A-arrows>`), and **panes** (`c1`/`t1`/`xx`) — the rest of the
+config becomes discoverable through `<Space>` + which-key. Everything else
+above is worth learning, but those three groups carry 80% of the day.
