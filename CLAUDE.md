@@ -69,6 +69,8 @@ lua/plugins/
 | `<leader>c1/2/3` | Toggle Claude 1/2/3 (right panel, swaps) | ToggleTerm |
 | `<Up>/<Down>`    | Move by display line (wrapped) | Editor |
 | `<Home>/<End>`   | Start/end of display line | Editor    |
+| `<A-Up/Down/Left/Right>` | Window navigation (also from terminal/TUI) | Editor |
+| `<C-w><Up/Down/Left/Right>` | Window navigation (Normal mode, built-in) | Editor |
 | `<Esc>`          | Exit terminal mode      | Terminal    |
 | `<C-\>`          | Toggle terminal         | ToggleTerm  |
 | `<CR>`           | Confirm completion      | nvim-cmp    |
