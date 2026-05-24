@@ -72,10 +72,8 @@ vim.keymap.set("n", "<leader>fg", builtin.live_grep, { desc = "Find text" })
 vim.keymap.set("n", "<leader>fb", builtin.buffers, { desc = "Find buffers" })
 vim.keymap.set("n", "<leader>fh", builtin.help_tags, { desc = "Help tags" })
 
--- Terminal
-vim.keymap.set("n", "<leader>t1", ":ToggleTerm 1<CR>")
-vim.keymap.set("n", "<leader>t2", ":ToggleTerm 2<CR>")
-vim.keymap.set("n", "<leader>t3", ":ToggleTerm 3<CR>")
+-- Terminal: first one opens as a full-width bottom row (~25% height).
+-- Additional ones split vertically next to it, forming a row of terminals.
 vim.keymap.set("t", "<Esc>", [[<C-\><C-n>]], { desc = "Exit terminal mode" })
 
 -- Auto-enter Terminal-Job mode when focusing any terminal buffer
@@ -134,6 +132,45 @@ end
 vim.keymap.set("n", "<leader>c1", function() toggle_claude(1) end, { desc = "Toggle Claude 1" })
 vim.keymap.set("n", "<leader>c2", function() toggle_claude(2) end, { desc = "Toggle Claude 2" })
 vim.keymap.set("n", "<leader>c3", function() toggle_claude(3) end, { desc = "Toggle Claude 3" })
+
+local term_bufs = {}
+local function find_any_term_window()
+    for _, buf in pairs(term_bufs) do
+        if vim.api.nvim_buf_is_valid(buf) then
+            local win = find_window_with_buf(buf)
+            if win then return win end
+        end
+    end
+    return nil
+end
+local function toggle_term(id)
+    local buf = term_bufs[id]
+    if buf and vim.api.nvim_buf_is_valid(buf) then
+        local win = find_window_with_buf(buf)
+        if win then
+            vim.api.nvim_win_close(win, false)
+            return
+        end
+    end
+    local other_term_win = find_any_term_window()
+    if other_term_win then
+        vim.api.nvim_set_current_win(other_term_win)
+        vim.cmd("rightbelow vsplit")
+    else
+        vim.cmd("botright split")
+        vim.cmd("resize " .. math.floor(vim.o.lines * 0.25))
+    end
+    if buf and vim.api.nvim_buf_is_valid(buf) then
+        vim.api.nvim_win_set_buf(0, buf)
+    else
+        vim.cmd("terminal")
+        term_bufs[id] = vim.api.nvim_get_current_buf()
+    end
+    vim.cmd("startinsert!")
+end
+vim.keymap.set("n", "<leader>t1", function() toggle_term(1) end, { desc = "Toggle terminal 1" })
+vim.keymap.set("n", "<leader>t2", function() toggle_term(2) end, { desc = "Toggle terminal 2" })
+vim.keymap.set("n", "<leader>t3", function() toggle_term(3) end, { desc = "Toggle terminal 3" })
 
 -- Tree map
 vim.keymap.set("n", "<leader>n", ":Neotree filesystem reveal left toggle<CR>", { desc = "Workspace tree" })

@@ -49,6 +49,13 @@ return {
                 float_opts = {
                     border = "rounded",
                 },
+                -- Pin horizontal terminals to the full-width bottom regardless
+                -- of which window had focus when the toggle fired.
+                on_open = function(term)
+                    if term.direction == "horizontal" then
+                        vim.cmd("wincmd J")
+                    end
+                end,
             })
         end,
     },
