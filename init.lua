@@ -38,6 +38,17 @@ vim.keymap.set("i", "<Up>", "<C-o>gk", { desc = "Up (display line)" })
 vim.keymap.set("i", "<Home>", "<C-o>g<Home>", { desc = "Start of display line" })
 vim.keymap.set("i", "<End>", "<C-o>g<End>", { desc = "End of display line" })
 
+-- Window navigation with Alt+arrows. Terminal mode escapes first so the
+-- chord works from inside TUIs (Claude, lazygit) that capture <C-w>.
+vim.keymap.set("n", "<A-Up>",    "<C-w><Up>",    { desc = "Window up" })
+vim.keymap.set("n", "<A-Down>",  "<C-w><Down>",  { desc = "Window down" })
+vim.keymap.set("n", "<A-Left>",  "<C-w><Left>",  { desc = "Window left" })
+vim.keymap.set("n", "<A-Right>", "<C-w><Right>", { desc = "Window right" })
+vim.keymap.set("t", "<A-Up>",    [[<C-\><C-n><C-w><Up>]],    { desc = "Window up" })
+vim.keymap.set("t", "<A-Down>",  [[<C-\><C-n><C-w><Down>]],  { desc = "Window down" })
+vim.keymap.set("t", "<A-Left>",  [[<C-\><C-n><C-w><Left>]],  { desc = "Window left" })
+vim.keymap.set("t", "<A-Right>", [[<C-\><C-n><C-w><Right>]], { desc = "Window right" })
+
 -- Clipboard
 vim.opt.clipboard = "unnamedplus"
 
@@ -113,6 +124,10 @@ local function toggle_claude(id)
     else
         vim.cmd("terminal claude")
         claude_bufs[id] = vim.api.nvim_get_current_buf()
+        vim.keymap.set("t", "<Esc>", "<Esc>", {
+            buffer = claude_bufs[id],
+            desc = "Send Esc to Claude",
+        })
     end
     vim.cmd("startinsert!")
 end
