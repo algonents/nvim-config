@@ -186,8 +186,19 @@ vim.keymap.set("n", "<leader>db", function()
 end, { desc = "Toggle breakpoint" })
 
 vim.keymap.set("n", "<leader>dc", function()
-    require("dap").continue()
-end, { desc = "Debug continue" })
+    local dap = require("dap")
+    if dap.session() then
+        dap.continue()                                  -- resume a running session
+    elseif vim.bo.filetype == "rust" then
+        vim.cmd.RustLsp({ "debuggables", bang = true }) -- re-run last Rust target, no prompt
+    else
+        dap.continue()                                  -- C/C++ use dap.configurations
+    end
+end, { desc = "Debug continue / start" })
+
+vim.keymap.set("n", "<leader>dr", function()
+    vim.cmd.RustLsp("debuggables") -- picker: choose (or switch) Rust target
+end, { desc = "Debug: pick Rust target" })
 
 vim.keymap.set("n", "<leader>do", function()
     require("dap").step_over()

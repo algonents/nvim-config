@@ -68,12 +68,6 @@ Each beat lists the keybindings the editor should overlay on screen as they're t
 
 *Keys: `<leader>ff` find files · `<leader>fg` live grep · `]h` / `[h` next/prev git hunk · `<leader>xx` diagnostics panel · `<leader>n` file tree*
 
-**[1:48 — terminal showing `NVIM_APPNAME=nvim-web nvim`]**
-
-"And `NVIM_APPNAME` isolates the config — same machine, completely separate web-dev setup, one env var away."
-
-*Shell: `NVIM_APPNAME=nvim-web nvim` launches an isolated config*
-
 **[1:58 — end card]**
 
 "Fast, native, debuggable — and Claude Code lives in the editor. That's what Claude Code-assisted systems programming looks like for me."
