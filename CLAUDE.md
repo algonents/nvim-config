@@ -116,6 +116,10 @@ The app name can be anything (e.g. `web`, `nvim-web`, `systems`) — the `nvim-`
 - DAP adapter: codelldb at `~/.local/opt/codelldb/extension/adapter/codelldb`
 - Neovim 0.11+ required (uses native `vim.lsp.config` for C++)
 
+## Roadmap
+
+Planned improvements (C++ experience, etc.) live in [docs/ROADMAP.md](docs/ROADMAP.md).
+
 ## TODO
 
 - [x] Add C++ DAP config — wire codelldb adapter for C++ debugging
