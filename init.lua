@@ -28,6 +28,25 @@ vim.opt.linebreak = true
 vim.opt.breakindent = true
 vim.opt.signcolumn = "yes"
 
+-- Make git (and any $EDITOR-driven tool) launch nvim, not the default vi,
+-- inside terminals spawned by Neovim. Combined with flatten.nvim, a
+-- `git commit` in a :terminal opens in THIS Neovim instead of a nested
+-- editor — avoiding the <Esc>/E382 'buftype' trap from nesting vi.
+vim.env.EDITOR = "nvim"
+
+-- Don't create swap files for git's throwaway message buffers. Otherwise a
+-- crashed/aborted commit leaves a stale swap in .git/, and the next commit
+-- opens COMMIT_EDITMSG read-only — silently dropping your message so git
+-- aborts with "empty commit message".
+vim.api.nvim_create_autocmd({ "BufReadPre", "BufNewFile" }, {
+    pattern = {
+        "*/COMMIT_EDITMSG", "*/MERGE_MSG", "*/TAG_EDITMSG", "*/git-rebase-todo",
+    },
+    callback = function()
+        vim.opt_local.swapfile = false
+    end,
+})
+
 -- Arrow keys navigate by display line (wrapped rows)
 vim.keymap.set({ "n", "v" }, "<Down>", "gj", { desc = "Down (display line)" })
 vim.keymap.set({ "n", "v" }, "<Up>", "gk", { desc = "Up (display line)" })
