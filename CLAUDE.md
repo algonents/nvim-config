@@ -31,6 +31,7 @@ lua/plugins/
 | Keymap help    | `folke/which-key.nvim`          | Keymap discovery popup                     |
 | Diagnostics    | `folke/trouble.nvim`            | Cross-file diagnostics panel               |
 | Terminal       | `akinsho/toggleterm.nvim`       | Horizontal, 3 slots                        |
+| Nested nvim    | `willothy/flatten.nvim`         | `git commit` in a terminal opens in a new tab in this nvim |
 | Theme          | `folke/tokyonight.nvim`         |                                            |
 
 ## Keymap Reference
@@ -87,6 +88,24 @@ cmake -S <cmake-source-dir> -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 ```
 
 clangd is configured to look in `build/` by default.
+
+## Committing from a Terminal
+
+Running `git commit` in a `:terminal` (toggleterm) opens the message buffer in a
+**new tab** in this Neovim instance — not a nested editor. Write and close it
+(`:wq`) and git proceeds. Three pieces make this work, all required:
+
+- `vim.env.EDITOR = "nvim"` (init.lua) — otherwise git falls back to `/usr/bin/vi`
+  and `flatten.nvim` (which only intercepts `nvim`) never engages.
+- `flatten.nvim` with `window = { open = "tab" }` — forwards the nested `nvim` to
+  the host via `$NVIM` and opens the commit in its own tab.
+- A `noswapfile` autocmd for `COMMIT_EDITMSG`/`MERGE_MSG`/`TAG_EDITMSG`/
+  `git-rebase-todo` (init.lua) — a crashed commit otherwise leaves a stale swap in
+  `.git/`, and the next commit opens the message read-only, silently dropping it so
+  git aborts with "empty commit message".
+
+If commit-from-terminal regresses, check those three. The `<Esc>` → exit-terminal
+mapping (init.lua) is why a *nested* editor is painful, so the goal is to never nest.
 
 ## Neovim Directories
 

@@ -60,6 +60,18 @@ return {
         end,
     },
     {
+        -- Opens nested `nvim` invocations (e.g. `git commit` from a
+        -- :terminal) in THIS Neovim instead of a nested editor. The forwarded
+        -- buffer opens in its own tab so it never disturbs your layout; write
+        -- and close it (`:wq`) to let git proceed.
+        "willothy/flatten.nvim",
+        lazy = false,
+        priority = 1001, -- must load before other UI plugins
+        opts = {
+            window = { open = "tab" },
+        },
+    },
+    {
         "nvim-neo-tree/neo-tree.nvim",
         branch = "v3.x",
         dependencies = {
