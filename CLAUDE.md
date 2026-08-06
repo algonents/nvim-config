@@ -1,6 +1,7 @@
 # Neovim Configuration
 
-Personal Neovim config for hybrid Rust/C++ systems development.
+Personal Neovim config for hybrid Rust/C++ systems development, plus
+Kotlin/JVM and buildless JavaScript work (the `air` monorepo).
 
 ## Structure
 
@@ -9,6 +10,8 @@ init.lua                  -- Bootstrap, settings, keymaps
 lua/plugins/
   rust.lua                -- rustaceanvim (rust-analyzer + codelldb DAP adapter)
   cpp.lua                 -- clangd LSP via native vim.lsp.config (Neovim 0.11+)
+  kotlin.lua              -- JetBrains kotlin-lsp via native vim.lsp.config
+  typescript.lua          -- typescript-language-server (ts_ls) via native vim.lsp.config
   completion.lua          -- nvim-cmp with LSP, buffer, path, snippet sources
   debugger.lua            -- nvim-dap + nvim-dap-ui
   editor.lua              -- treesitter, telescope (fzf-native), neo-tree, toggleterm, gitsigns, which-key, trouble, tokyonight
@@ -20,11 +23,13 @@ lua/plugins/
 |----------------|---------------------------------|--------------------------------------------|
 | Rust LSP       | `mrcjkb/rustaceanvim` v6        | rust-analyzer, clippy, cargo allFeatures   |
 | C++ LSP        | native `vim.lsp.config`         | clangd with `--compile-commands-dir=build` |
+| Kotlin LSP     | native `vim.lsp.config`         | JetBrains kotlin-lsp (pre-alpha), standalone tarball |
+| TS/JS LSP      | native `vim.lsp.config`         | typescript-language-server; also checks plain JS via project `jsconfig.json` |
 | Completion     | `hrsh7th/nvim-cmp`              | LSP, buffer, path, LuaSnip sources        |
 | Snippets       | `L3MON4D3/LuaSnip`             |                                            |
 | Debugger       | `mfussenegger/nvim-dap`         | codelldb adapter for Rust and C/C++        |
 | Debugger UI    | `rcarriga/nvim-dap-ui`          | Right panel (40 cols) + bottom REPL        |
-| Treesitter     | `nvim-treesitter`               | rust, c, cpp, cmake, lua, vim, toml, json, md |
+| Treesitter     | `nvim-treesitter`               | rust, c, cpp, cmake, kotlin, lua, vim, toml, json, md |
 | File explorer  | `nvim-neo-tree/neo-tree.nvim`   | Left panel, 32 cols                        |
 | Fuzzy finder   | `nvim-telescope/telescope.nvim` | With fzf-native for faster matching        |
 | Git signs      | `lewis6991/gitsigns.nvim`       | Inline blame, hunk navigation              |
@@ -89,6 +94,42 @@ cmake -S <cmake-source-dir> -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 
 clangd is configured to look in `build/` by default.
 
+## Kotlin Projects
+
+`kotlin.lua` uses the official JetBrains **kotlin-lsp** (pre-alpha). It is not
+on npm or in distro repos — clean-machine install is a standalone tarball:
+
+1. Download the standalone Linux zip from
+   <https://github.com/Kotlin/kotlin-lsp> (bundles its own JetBrains Runtime —
+   no local JDK needed to run it).
+2. Extract to `~/.local/opt/kotlin-lsp/` (the archive unpacks to a versioned
+   `kotlin-server-<build>/` directory).
+3. Symlink the launcher onto the PATH under the name the config invokes:
+
+```shell
+ln -s ~/.local/opt/kotlin-lsp/kotlin-server-<build>/bin/intellij-server ~/.local/bin/kotlin-lsp
+```
+
+Root markers are the Gradle settings/build files. First open of a Gradle
+project triggers a full build import — expect minutes, not seconds; later
+opens are fast.
+
+## JavaScript / TypeScript Projects
+
+`typescript.lua` runs **typescript-language-server** (`ts_ls`). Clean-machine
+install (needs Node.js; binaries land in `~/.local/bin`):
+
+```shell
+npm install -g --prefix ~/.local typescript typescript-language-server
+```
+
+Plain-JS projects with no build step (e.g. `air/air-app`) opt into checking
+via a `jsconfig.json` (`checkJs`) at the project root — that file is also the
+root marker `ts_ls` attaches to. For diagnostics to match the project's
+`npm run typecheck`, run `npm install` **in the project** once so its dev-only
+type packages (`node_modules`) exist; the annotations themselves are
+JSDoc-only, nothing is compiled.
+
 ## Committing from a Terminal
 
 Running `git commit` in a `:terminal` (toggleterm) opens the message buffer in a
@@ -133,7 +174,7 @@ The app name can be anything (e.g. `web`, `nvim-web`, `systems`) — the `nvim-`
 - Leader: `<Space>`
 - Format-on-save: Rust (`*.rs`) and C/C++ (`*.c`, `*.cpp`, `*.h`, `*.hpp`)
 - DAP adapter: codelldb at `~/.local/opt/codelldb/extension/adapter/codelldb`
-- Neovim 0.11+ required (uses native `vim.lsp.config` for C++)
+- Neovim 0.11+ required (uses native `vim.lsp.config` for C++, Kotlin, TS/JS)
 
 ## Roadmap
 
