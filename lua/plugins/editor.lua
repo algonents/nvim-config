@@ -27,6 +27,7 @@ return {
                     "markdown",
                     "markdown_inline",
                     "cmake",
+                    "kotlin",
                 },
                 highlight = { enable = true },
                 indent = { enable = true },
@@ -82,6 +83,8 @@ return {
         config = function()
             require("neo-tree").setup({
                 filesystem = {
+                    group_empty_dirs = true,
+                    scan_mode = "deep",
                     filtered_items = {
                         hide_dotfiles = false,
                         hide_gitignored = false,
