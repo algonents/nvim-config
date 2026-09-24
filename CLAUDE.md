@@ -37,6 +37,7 @@ lua/plugins/
 | Diagnostics    | `folke/trouble.nvim`            | Cross-file diagnostics panel               |
 | Terminal       | `akinsho/toggleterm.nvim`       | Horizontal, 3 slots                        |
 | Nested nvim    | `willothy/flatten.nvim`         | `git commit` in a terminal opens in a new tab in this nvim |
+| MD preview     | `iamcco/markdown-preview.nvim`  | Live browser preview via local node server |
 | Theme          | `folke/tokyonight.nvim`         |                                            |
 
 ## Keymap Reference
@@ -70,6 +71,8 @@ lua/plugins/
 | `]h` / `[h`      | Next/prev git hunk      | Gitsigns    |
 | `<leader>n`      | Toggle file tree        | Neo-tree    |
 | `O` (in tree)    | Open file externally    | Neo-tree    |
+| `E` (in tree)    | Expand/collapse subtree recursively | Neo-tree |
+| `<leader>mp`     | Toggle markdown preview | Markdown    |
 | `<leader>i`      | Open current file externally | Editor |
 | `<leader>t1/2/3` | Toggle terminal 1/2/3   | ToggleTerm  |
 | `<leader>c1/2/3` | Toggle Claude 1/2/3 (right panel, swaps) | ToggleTerm |
@@ -109,6 +112,16 @@ on npm or in distro repos — clean-machine install is a standalone tarball:
 ```shell
 ln -s ~/.local/opt/kotlin-lsp/kotlin-server-<build>/bin/intellij-server ~/.local/bin/kotlin-lsp
 ```
+
+**EAP builds expire after ~40 days.** When the server suddenly dies with
+"Client kotlin_lsp quit with exit code 7" (stderr: "This build of
+intellij-server has expired"), it is not a config problem — install a newer
+build. The GitHub RELEASES.md links go stale; the VS Code Marketplace
+extension `JetBrains.kotlin-server` updates more often. Find its latest
+version, get the bundled build number (`extension/server/build.txt` in the
+vsix), then fetch the matching standalone tarball from
+`https://download-cdn.jetbrains.com/language-server/kotlin-server/<build>/kotlin-server-<build>.tar.gz`,
+extract next to the old one, and repoint the symlink.
 
 Root markers are the Gradle settings/build files. First open of a Gradle
 project triggers a full build import — expect minutes, not seconds; later
@@ -172,7 +185,7 @@ The app name can be anything (e.g. `web`, `nvim-web`, `systems`) — the `nvim-`
 
 - Plugin manager: lazy.nvim (auto-imports `lua/plugins/*.lua`)
 - Leader: `<Space>`
-- Format-on-save: Rust (`*.rs`) and C/C++ (`*.c`, `*.cpp`, `*.h`, `*.hpp`)
+- Format-on-save: Rust (`*.rs`), C/C++ (`*.c`, `*.cpp`, `*.h`, `*.hpp`), Kotlin (`*.kt`, `*.kts`)
 - DAP adapter: codelldb at `~/.local/opt/codelldb/extension/adapter/codelldb`
 - Neovim 0.11+ required (uses native `vim.lsp.config` for C++, Kotlin, TS/JS)
 

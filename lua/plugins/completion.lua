@@ -13,6 +13,9 @@ return {
             local luasnip = require("luasnip")
 
             cmp.setup({
+                performance = {
+                    debounce = 300,
+                },
                 snippet = {
                     expand = function(args)
                         luasnip.lsp_expand(args.body)
@@ -23,7 +26,7 @@ return {
                     ["<C-f>"] = cmp.mapping.scroll_docs(4),
                     ["<C-Space>"] = cmp.mapping.complete(),
                     ["<C-e>"] = cmp.mapping.abort(),
-                    ["<CR>"] = cmp.mapping.confirm({ select = true }),
+                    ["<CR>"] = cmp.mapping.confirm({ select = false }),
                     ["<Tab>"] = cmp.mapping(function(fallback)
                         if cmp.visible() then
                             cmp.select_next_item()
@@ -50,6 +53,10 @@ return {
                     { name = "buffer" },
                     { name = "path" },
                 }),
+            })
+
+            cmp.setup.filetype("markdown", {
+                enabled = false,
             })
         end,
     },
