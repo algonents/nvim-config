@@ -74,7 +74,35 @@ vim.opt.clipboard = "unnamedplus"
 -- LSP keymaps
 vim.keymap.set("n", "gd", vim.lsp.buf.definition, { desc = "Go to definition" })
 vim.keymap.set("n", "K", vim.lsp.buf.hover, { desc = "Hover docs" })
-vim.keymap.set("n", "<leader>fr", require("telescope.builtin").lsp_references, { desc = "Find references" })
+-- References sorted main-sources-first (test dirs last), then path/line.
+-- Routes through the quickfix list so the order survives into telescope.
+local function lsp_references_sorted()
+    vim.lsp.buf.references(nil, {
+        on_list = function(list)
+            local function is_test(path)
+                return path:find("/test/", 1, true) ~= nil
+                    or path:find("/tests/", 1, true) ~= nil
+            end
+            table.sort(list.items, function(a, b)
+                local ta = is_test(a.filename) and 1 or 0
+                local tb = is_test(b.filename) and 1 or 0
+                if ta ~= tb then
+                    return ta < tb
+                end
+                if a.filename ~= b.filename then
+                    return a.filename < b.filename
+                end
+                return a.lnum < b.lnum
+            end)
+            vim.fn.setqflist({}, " ", list)
+            require("telescope.builtin").quickfix({
+                prompt_title = "LSP References",
+                sorting_strategy = "ascending",
+            })
+        end,
+    })
+end
+vim.keymap.set("n", "<leader>fr", lsp_references_sorted, { desc = "Find references" })
 vim.keymap.set("n", "<leader>rn", vim.lsp.buf.rename, { desc = "Rename symbol" })
 vim.keymap.set("n", "<leader>ca", vim.lsp.buf.code_action, { desc = "Code action" })
 
@@ -263,9 +291,9 @@ vim.diagnostic.config({
     severity_sort = true,
 })
 
--- Format on save (Rust and C/C++)
+-- Format on save (Rust, C/C++, Kotlin)
 vim.api.nvim_create_autocmd("BufWritePre", {
-    pattern = { "*.rs", "*.c", "*.cpp", "*.h", "*.hpp" },
+    pattern = { "*.rs", "*.c", "*.cpp", "*.h", "*.hpp", "*.kt", "*.kts" },
     callback = function()
         vim.lsp.buf.format({ async = false })
     end,

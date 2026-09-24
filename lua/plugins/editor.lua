@@ -99,6 +99,18 @@ return {
                     position = "left",
                     width = 32,
                     mappings = {
+                        ["E"] = {
+                            function(state)
+                                local commands = require("neo-tree.sources.filesystem.commands")
+                                local node = state.tree:get_node()
+                                if node and node:is_expanded() then
+                                    commands.close_all_subnodes(state)
+                                else
+                                    commands.expand_all_subnodes(state)
+                                end
+                            end,
+                            desc = "Expand/collapse all from node",
+                        },
                         ["O"] = {
                             function(state)
                                 local node = state.tree:get_node()
