@@ -114,9 +114,55 @@ vim.keymap.set("n", "<leader>q", vim.diagnostic.setloclist, { desc = "Diagnostic
 
 -- Telescope keymaps
 local builtin = require("telescope.builtin")
-vim.keymap.set("n", "<leader>ff", builtin.find_files, { desc = "Find files" })
-vim.keymap.set("n", "<leader>fg", builtin.live_grep, { desc = "Find text" })
-vim.keymap.set("n", "<leader>fb", builtin.buffers, { desc = "Find buffers" })
+-- Telescope opens the selection in the window that was focused when the picker
+-- launched. From a terminal/Claude panel or neo-tree that would replace that
+-- panel, so first jump to an editing window: the previous window if it is one,
+-- else the first normal (non-floating, buftype "") window in the tab.
+local function focus_edit_window()
+    local function is_edit(win)
+        return vim.api.nvim_win_is_valid(win)
+            and vim.api.nvim_win_get_config(win).relative == ""
+            and vim.bo[vim.api.nvim_win_get_buf(win)].buftype == ""
+    end
+    if is_edit(vim.api.nvim_get_current_win()) then return end
+    local prev = vim.fn.win_getid(vim.fn.winnr("#"))
+    if prev ~= 0 and is_edit(prev) then
+        vim.api.nvim_set_current_win(prev)
+        return
+    end
+    for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+        if is_edit(win) then
+            vim.api.nvim_set_current_win(win)
+            return
+        end
+    end
+end
+local function in_edit_window(picker)
+    return function()
+        focus_edit_window()
+        picker()
+    end
+end
+vim.keymap.set("n", "<leader>ff", in_edit_window(builtin.find_files), { desc = "Find files" })
+vim.keymap.set("n", "<leader>fg", in_edit_window(builtin.live_grep), { desc = "Find text" })
+-- builtin.buffers has no buftype filter, so hide terminal buffers (toggleterm,
+-- Claude panels) by unlisting them just while the picker collects its list.
+local function buffers_no_terminals()
+    focus_edit_window()
+    local hidden = {}
+    for _, buf in ipairs(vim.api.nvim_list_bufs()) do
+        if vim.bo[buf].buflisted and vim.bo[buf].buftype == "terminal" then
+            vim.bo[buf].buflisted = false
+            table.insert(hidden, buf)
+        end
+    end
+    local ok, err = pcall(builtin.buffers)
+    for _, buf in ipairs(hidden) do
+        if vim.api.nvim_buf_is_valid(buf) then vim.bo[buf].buflisted = true end
+    end
+    if not ok then error(err) end
+end
+vim.keymap.set("n", "<leader>fb", buffers_no_terminals, { desc = "Find buffers" })
 vim.keymap.set("n", "<leader>fh", builtin.help_tags, { desc = "Help tags" })
 
 -- Terminal: first one opens as a full-width bottom row (~25% height).
