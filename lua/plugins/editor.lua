@@ -90,8 +90,12 @@ return {
                         hide_gitignored = false,
                         hide_by_name = { "target" },
                     },
+                    -- Built-in follow fires on every BufEnter, so merely moving
+                    -- focus between windows (<A-Right>) jumps the tree cursor and
+                    -- expands folders. Follow only when a file is shown in a
+                    -- window instead (BufWinEnter autocmd below).
                     follow_current_file = {
-                        enabled = true,
+                        enabled = false,
                     },
                     use_libuv_file_watcher = true,
                 },
@@ -122,6 +126,15 @@ return {
                         },
                     },
                 },
+            })
+            vim.api.nvim_create_autocmd("BufWinEnter", {
+                group = vim.api.nvim_create_augroup("NeoTreeFollowOnOpen", { clear = true }),
+                callback = function(args)
+                    if vim.bo[args.buf].buftype == "" and args.file ~= "" then
+                        -- No-op unless the tree window is open (force_show = false).
+                        require("neo-tree.sources.filesystem").follow()
+                    end
+                end,
             })
         end,
     },
