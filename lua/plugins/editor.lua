@@ -6,6 +6,20 @@ return {
             { "nvim-telescope/telescope-fzf-native.nvim", build = "make" },
         },
         config = function()
+            -- <M-p> hides the preview so the results pane takes the full width
+            -- (long file paths), like neo-tree's `e` auto-expand toggle.
+            local toggle_preview = require("telescope.actions.layout").toggle_preview
+            require("telescope").setup({
+                defaults = {
+                    -- Shorten long paths so the filename stays visible
+                    -- (e.g. `a/b/c/d/file.lua` → `a/../d/file.lua`).
+                    path_display = { "smart" },
+                    mappings = {
+                        i = { ["<M-p>"] = toggle_preview },
+                        n = { ["<M-p>"] = toggle_preview },
+                    },
+                },
+            })
             require("telescope").load_extension("fzf")
         end,
     },

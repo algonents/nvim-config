@@ -57,6 +57,7 @@ lua/plugins/
 | `<leader>fg`     | Live grep               | Telescope   |
 | `<leader>fb`     | Find buffers            | Telescope   |
 | `<leader>fh`     | Help tags               | Telescope   |
+| `<M-p>` (in picker) | Toggle preview (full-width results) | Telescope |
 | `<leader>db`     | Toggle breakpoint       | DAP         |
 | `<leader>dc`     | Continue                | DAP         |
 | `<leader>do`     | Step over               | DAP         |
