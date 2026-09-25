@@ -268,6 +268,41 @@ vim.keymap.set("n", "<leader>t3", function() toggle_term(3) end, { desc = "Toggl
 -- Tree map
 vim.keymap.set("n", "<leader>n", ":Neotree filesystem reveal left toggle<CR>", { desc = "Workspace tree" })
 
+-- Workspace layout: tree (left) + terminal 1 (bottom) + Claude 1 (right
+-- column), focus back in the editor. Opened automatically on startup and
+-- re-openable with :Workspace after closing panels. Order matters: the
+-- terminal splits first so the Claude column is full height.
+local function open_workspace()
+    local edit_win = vim.api.nvim_get_current_win()
+    require("neo-tree.command").execute({
+        action = "show",
+        source = "filesystem",
+        position = "left",
+        reveal = true,
+    })
+    if not find_any_term_window() then toggle_term(1) end
+    if not find_any_claude_window() then toggle_claude(1) end
+    if vim.api.nvim_win_is_valid(edit_win) then
+        vim.api.nvim_set_current_win(edit_win)
+    end
+    vim.cmd("stopinsert") -- cancel the toggles' pending startinsert
+end
+vim.api.nvim_create_user_command("Workspace", open_workspace, { desc = "Open tree, terminal and Claude panels" })
+
+vim.api.nvim_create_autocmd("VimEnter", {
+    group = vim.api.nvim_create_augroup("WorkspaceOnStartup", { clear = true }),
+    callback = function()
+        -- Skip when there is no UI (--headless), in diff mode, or when we were
+        -- launched as $EDITOR by git (commit message, rebase todo, ...).
+        if #vim.api.nvim_list_uis() == 0 or vim.o.diff then return end
+        local ft = vim.bo.filetype
+        if ft == "gitcommit" or ft == "gitrebase" or vim.fn.expand("%:p"):find("/%.git/") then
+            return
+        end
+        open_workspace()
+    end,
+})
+
 -- Open current file in default external app (e.g. PNG → image viewer)
 vim.keymap.set("n", "<leader>i", function()
     vim.ui.open(vim.fn.expand("%"))

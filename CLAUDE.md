@@ -70,6 +70,7 @@ lua/plugins/
 | `<leader>xd`     | Buffer diagnostics      | Trouble     |
 | `]h` / `[h`      | Next/prev git hunk      | Gitsigns    |
 | `<leader>n`      | Toggle file tree        | Neo-tree    |
+| `:Workspace`     | Re-open tree + terminal 1 + Claude 1 (opened automatically on startup) | Editor |
 | `O` (in tree)    | Open file externally    | Neo-tree    |
 | `E` (in tree)    | Expand/collapse subtree recursively | Neo-tree |
 | `<leader>mp`     | Toggle markdown preview | Markdown    |
@@ -160,6 +161,18 @@ Running `git commit` in a `:terminal` (toggleterm) opens the message buffer in a
 
 If commit-from-terminal regresses, check those three. The `<Esc>` → exit-terminal
 mapping (init.lua) is why a *nested* editor is painful, so the goal is to never nest.
+
+## Startup Layout
+
+A `VimEnter` autocmd (init.lua) opens the workspace layout on every launch:
+neo-tree on the left, terminal 1 along the bottom, Claude 1 as a full-height
+right column, with focus returned to the editor. It reuses the `<leader>n`,
+`<leader>t1` and `<leader>c1` toggles, so closing a panel and re-toggling it
+behaves as before; `:Workspace` restores any panel that was closed.
+
+The layout is skipped when there is no UI (`--headless`), in diff mode, and
+when Neovim is launched as `$EDITOR` by git (commit message, rebase todo),
+so a commit from an outside terminal still opens as a plain message buffer.
 
 ## Neovim Directories
 
