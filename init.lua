@@ -59,14 +59,68 @@ vim.keymap.set("i", "<End>", "<C-o>g<End>", { desc = "End of display line" })
 
 -- Window navigation with Alt+arrows. Terminal mode escapes first so the
 -- chord works from inside TUIs (Claude, lazygit) that capture <C-w>.
-vim.keymap.set("n", "<A-Up>",    "<C-w><Up>",    { desc = "Window up" })
-vim.keymap.set("n", "<A-Down>",  "<C-w><Down>",  { desc = "Window down" })
-vim.keymap.set("n", "<A-Left>",  "<C-w><Left>",  { desc = "Window left" })
-vim.keymap.set("n", "<A-Right>", "<C-w><Right>", { desc = "Window right" })
-vim.keymap.set("t", "<A-Up>",    [[<C-\><C-n><C-w><Up>]],    { desc = "Window up" })
-vim.keymap.set("t", "<A-Down>",  [[<C-\><C-n><C-w><Down>]],  { desc = "Window down" })
-vim.keymap.set("t", "<A-Left>",  [[<C-\><C-n><C-w><Left>]],  { desc = "Window left" })
-vim.keymap.set("t", "<A-Right>", [[<C-\><C-n><C-w><Right>]], { desc = "Window right" })
+--
+-- Unlike <C-w>h/j/k/l, which picks the neighbour at the cursor's screen
+-- row/col, this uses window geometry. The previous window (the one you came
+-- from) wins when it lies in that direction, so Alt-Right then Alt-Left
+-- returns to the exact window you left. Otherwise: the nearest windows in
+-- the direction, tie broken by the longest shared edge. From the
+-- full-height Claude column, Alt-Left therefore lands in the editor, not
+-- the bottom terminal the cursor (on Claude's prompt line) sits beside.
+local function win_move(dir)
+    local cur = vim.api.nvim_get_current_win()
+    local function rect(win)
+        local pos = vim.api.nvim_win_get_position(win)
+        return {
+            top = pos[1], left = pos[2],
+            bottom = pos[1] + vim.api.nvim_win_get_height(win),
+            right = pos[2] + vim.api.nvim_win_get_width(win),
+        }
+    end
+    local c = rect(cur)
+    -- Distance and shared-edge length of `win` if it lies in `dir`, else nil.
+    local function relation(win)
+        if win == cur or not vim.api.nvim_win_is_valid(win)
+            or vim.api.nvim_win_get_config(win).relative ~= "" then
+            return nil
+        end
+        local r = rect(win)
+        local dist, overlap
+        if dir == "left" and r.right <= c.left then
+            dist, overlap = c.left - r.right, math.min(c.bottom, r.bottom) - math.max(c.top, r.top)
+        elseif dir == "right" and r.left >= c.right then
+            dist, overlap = r.left - c.right, math.min(c.bottom, r.bottom) - math.max(c.top, r.top)
+        elseif dir == "up" and r.bottom <= c.top then
+            dist, overlap = c.top - r.bottom, math.min(c.right, r.right) - math.max(c.left, r.left)
+        elseif dir == "down" and r.top >= c.bottom then
+            dist, overlap = r.top - c.bottom, math.min(c.right, r.right) - math.max(c.left, r.left)
+        end
+        if dist and overlap > 0 then return dist, overlap end
+        return nil
+    end
+    local prev = vim.fn.win_getid(vim.fn.winnr("#"))
+    if prev ~= 0 and relation(prev) then
+        vim.api.nvim_set_current_win(prev)
+        return
+    end
+    local best, best_dist, best_overlap
+    for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+        local dist, overlap = relation(win)
+        if dist and (not best or dist < best_dist or (dist == best_dist and overlap > best_overlap)) then
+            best, best_dist, best_overlap = win, dist, overlap
+        end
+    end
+    if best then vim.api.nvim_set_current_win(best) end
+end
+vim.api.nvim_create_user_command("WinMove", function(a) win_move(a.args) end, {
+    nargs = 1,
+    complete = function() return { "up", "down", "left", "right" } end,
+    desc = "Move to the neighbouring window by geometry",
+})
+for key, dir in pairs({ Up = "up", Down = "down", Left = "left", Right = "right" }) do
+    vim.keymap.set("n", "<A-" .. key .. ">", function() win_move(dir) end, { desc = "Window " .. dir })
+    vim.keymap.set("t", "<A-" .. key .. ">", [[<C-\><C-n><Cmd>WinMove ]] .. dir .. "<CR>", { desc = "Window " .. dir })
+end
 
 -- Clipboard
 vim.opt.clipboard = "unnamedplus"
