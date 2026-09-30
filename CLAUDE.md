@@ -29,7 +29,7 @@ lua/plugins/
 | Snippets       | `L3MON4D3/LuaSnip`             |                                            |
 | Debugger       | `mfussenegger/nvim-dap`         | codelldb adapter for Rust and C/C++        |
 | Debugger UI    | `rcarriga/nvim-dap-ui`          | Right panel (40 cols) + bottom REPL        |
-| Treesitter     | `nvim-treesitter`               | rust, c, cpp, cmake, kotlin, lua, vim, toml, json, md |
+| Treesitter     | `nvim-treesitter` (`main`)      | rust, c/cpp, cmake, kotlin, java, groovy, xml, js/ts, lua, toml, json, yaml, md; needs `tree-sitter` CLI |
 | File explorer  | `nvim-neo-tree/neo-tree.nvim`   | Left panel, 32 cols                        |
 | Fuzzy finder   | `nvim-telescope/telescope.nvim` | With fzf-native for faster matching        |
 | Git signs      | `lewis6991/gitsigns.nvim`       | Inline blame, hunk navigation              |
@@ -128,6 +128,21 @@ extract next to the old one, and repoint the symlink.
 Root markers are the Gradle settings/build files. First open of a Gradle
 project triggers a full build import — expect minutes, not seconds; later
 opens are fast.
+
+## Tree-sitter
+
+`nvim-treesitter` is on its `main` branch, which differs from the old
+`master` API: `setup()` takes no parser list and enables nothing. `editor.lua`
+installs the parser list itself and starts highlighting from a `FileType`
+autocmd. Parsers are compiled by the **`tree-sitter` CLI** (plus a C
+compiler); without it every install fails with `ENOENT ... 'tree-sitter'` and
+buffers silently fall back to regex syntax. Clean-machine install:
+
+```shell
+cargo install --locked tree-sitter-cli
+```
+
+Parsers land in `~/.local/share/nvim/site/parser/`. `:TSUpdate` updates them.
 
 ## JavaScript / TypeScript Projects
 

@@ -24,27 +24,36 @@ return {
         end,
     },
     {
+        -- `main` branch API: setup() takes no parser list and enables nothing.
+        -- Parsers are installed explicitly (compiled with the `tree-sitter`
+        -- CLI, see CLAUDE.md) and highlighting is started per filetype below.
         "nvim-treesitter/nvim-treesitter",
+        branch = "main",
+        lazy = false,
         build = ":TSUpdate",
         config = function()
-            require("nvim-treesitter").setup({
-                ensure_installed = {
-                    "rust",
-                    "c",
-                    "cpp",
-                    "lua",
-                    "vim",
-                    "vimdoc",
-                    "query",
-                    "toml",
-                    "json",
-                    "markdown",
-                    "markdown_inline",
-                    "cmake",
-                    "kotlin",
-                },
-                highlight = { enable = true },
-                indent = { enable = true },
+            local parsers = {
+                "rust", "c", "cpp", "cmake",
+                "kotlin", "java", "groovy", "xml",
+                "javascript", "typescript", "tsx",
+                "lua", "vim", "vimdoc", "query",
+                "toml", "json", "yaml", "markdown", "markdown_inline",
+            }
+            local ts = require("nvim-treesitter")
+            ts.install(parsers) -- async; no-op for parsers already installed
+
+            -- Parser name differs from filetype for some languages.
+            local filetypes = {}
+            for _, lang in ipairs(parsers) do
+                vim.list_extend(filetypes, vim.treesitter.language.get_filetypes(lang))
+            end
+            vim.api.nvim_create_autocmd("FileType", {
+                group = vim.api.nvim_create_augroup("TreesitterStart", { clear = true }),
+                pattern = filetypes,
+                callback = function(args)
+                    -- pcall: the parser may still be compiling on first launch.
+                    pcall(vim.treesitter.start, args.buf)
+                end,
             })
         end,
     },
