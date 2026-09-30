@@ -5,13 +5,20 @@
 -- First open of a Gradle project triggers a build import — can take minutes.
 vim.lsp.config("kotlin_lsp", {
     cmd = { "kotlin-lsp", "--stdio" },
-    root_markers = {
-        "settings.gradle.kts",
-        "settings.gradle",
-        "build.gradle.kts",
-        "build.gradle",
-        ".git",
-    },
+    -- root_dir (not root_markers) so library sources opened from a jar://
+    -- URI stay detached: the server only knows that URI as a compiled class,
+    -- so hover/gd positions in the real source text would be wrong.
+    root_dir = function(bufnr, on_dir)
+        if vim.b[bufnr].library_source then return end
+        local root = vim.fs.root(bufnr, {
+            "settings.gradle.kts",
+            "settings.gradle",
+            "build.gradle.kts",
+            "build.gradle",
+            ".git",
+        })
+        if root then on_dir(root) end
+    end,
     filetypes = { "kotlin" },
     capabilities = (function()
         local caps = vim.lsp.protocol.make_client_capabilities()
@@ -51,12 +58,35 @@ vim.api.nvim_create_user_command("KotlinLspRestart", function()
 end, { desc = "Restart kotlin-lsp (re-import the Gradle model)" })
 
 -- Definitions inside library jars come back as jar:// (or jrt:// for the
--- JDK) URIs, which Neovim can't read — the buffer stayed empty and the
--- cursor jump blew up. The server exposes a "decompile" command for exactly
--- this; fill the buffer with its output instead.
+-- JDK) URIs, which Neovim can't read. Prefer the real source from a
+-- -sources.jar / the Android SDK sources (lua/jvm_sources.lua); fall back to
+-- the server's "decompile" command, which yields stubs with no bodies.
+local jvm_sources = require("jvm_sources")
+local hinted = {}
 vim.api.nvim_create_autocmd("BufReadCmd", {
     pattern = { "jar:/*", "jrt:/*" },
     callback = function(ev)
+        local function fill(text, filetype)
+            vim.bo[ev.buf].readonly = false -- refill on :edit! (facade reload)
+            vim.bo[ev.buf].modifiable = true
+            vim.api.nvim_buf_set_lines(ev.buf, 0, -1, false, vim.split(text, "\n"))
+            vim.bo[ev.buf].modified = false
+            vim.bo[ev.buf].modifiable = false
+            vim.bo[ev.buf].readonly = true
+            vim.bo[ev.buf].filetype = filetype
+        end
+
+        local ok, text, ext_or_hint = pcall(jvm_sources.find, ev.match, jvm_sources.pending_symbol)
+        if ok and text then
+            vim.b[ev.buf].library_source = true -- keeps kotlin_lsp detached (root_dir)
+            fill(text, ext_or_hint == "java" and "java" or "kotlin")
+            return
+        end
+        if ok and ext_or_hint and not hinted[ext_or_hint] then
+            hinted[ext_or_hint] = true -- once per kind of miss per session
+            vim.notify("Showing decompiled stub: " .. ext_or_hint, vim.log.levels.INFO)
+        end
+
         local client = vim.lsp.get_clients({ name = "kotlin_lsp" })[1]
         if not client then
             return
@@ -70,12 +100,12 @@ vim.api.nvim_create_autocmd("BufReadCmd", {
             vim.notify("kotlin-lsp: decompile failed for " .. ev.match, vim.log.levels.WARN)
             return
         end
-        vim.api.nvim_buf_set_lines(ev.buf, 0, -1, false, vim.split(result.code, "\n"))
-        vim.bo[ev.buf].modified = false
-        vim.bo[ev.buf].modifiable = false
-        vim.bo[ev.buf].readonly = true
-        vim.bo[ev.buf].filetype = result.language or "kotlin"
+        fill(result.code, result.language or "kotlin")
     end,
 })
+
+vim.api.nvim_create_user_command("GradleDownloadSources", function()
+    jvm_sources.download(0)
+end, { desc = "Download -sources.jar for the Gradle project's dependencies" })
 
 return {}

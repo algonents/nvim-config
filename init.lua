@@ -126,7 +126,45 @@ end
 vim.opt.clipboard = "unnamedplus"
 
 -- LSP keymaps
-vim.keymap.set("n", "gd", vim.lsp.buf.definition, { desc = "Go to definition" })
+-- gd: like vim.lsp.buf.definition, but library sources opened from a jar://
+-- class (lua/jvm_sources.lua) put the cursor on the real declaration — the
+-- server's position refers to its decompiled stub, not the source file.
+local function goto_definition()
+    local symbol = vim.fn.expand("<cword>")
+    local jvm_sources = require("jvm_sources")
+    -- Set before the request: Neovim loads a jar:// buffer while building
+    -- the location list, i.e. before on_list runs.
+    jvm_sources.pending_symbol = symbol
+    vim.lsp.buf.definition({
+        on_list = function(list)
+            if #list.items > 1 then
+                jvm_sources.pending_symbol = nil
+                vim.fn.setqflist({}, " ", list)
+                vim.cmd("botright copen")
+                return
+            end
+            local item = list.items[1]
+            vim.cmd("normal! m'")
+            local buf = item.bufnr or vim.fn.bufadd(item.filename)
+            vim.bo[buf].buflisted = true
+            vim.api.nvim_win_set_buf(0, buf)
+            local pos
+            if vim.b[buf].library_source then
+                pos = jvm_sources.locate(buf, symbol)
+                if not pos then
+                    -- Loaded earlier for another symbol of the same facade
+                    -- class, whose parts span several files: reload.
+                    vim.cmd("edit!")
+                    pos = jvm_sources.locate(buf, symbol)
+                end
+            end
+            jvm_sources.pending_symbol = nil
+            vim.api.nvim_win_set_cursor(0, pos or { item.lnum, item.col - 1 })
+            vim.cmd("normal! zvzz")
+        end,
+    })
+end
+vim.keymap.set("n", "gd", goto_definition, { desc = "Go to definition" })
 vim.keymap.set("n", "K", vim.lsp.buf.hover, { desc = "Hover docs" })
 -- References sorted main-sources-first (test dirs last), then path/line.
 -- Routes through the quickfix list so the order survives into telescope.
