@@ -11,6 +11,8 @@ lua/plugins/
   rust.lua                -- rustaceanvim (rust-analyzer + codelldb DAP adapter)
   cpp.lua                 -- clangd LSP via native vim.lsp.config (Neovim 0.11+)
   kotlin.lua              -- JetBrains kotlin-lsp via native vim.lsp.config
+lua/jvm_sources.lua       -- real library sources for jar:// class locations (gd)
+gradle/download-sources.gradle -- init script behind :GradleDownloadSources
   typescript.lua          -- typescript-language-server (ts_ls) via native vim.lsp.config
   completion.lua          -- nvim-cmp with LSP, buffer, path, snippet sources
   debugger.lua            -- nvim-dap + nvim-dap-ui
@@ -45,7 +47,7 @@ lua/plugins/
 | Key              | Action                  | Context     |
 |------------------|-------------------------|-------------|
 | `<Space>`        | Leader key              |             |
-| `gd`             | Go to definition        | LSP         |
+| `gd`             | Go to definition (library code opens as real source when available) | LSP |
 | `K`              | Hover docs              | LSP         |
 | `<leader>fr`     | Find references         | LSP / Telescope |
 | `<leader>rn`     | Rename symbol           | LSP         |
@@ -71,6 +73,7 @@ lua/plugins/
 | `<leader>xd`     | Buffer diagnostics      | Trouble     |
 | `]h` / `[h`      | Next/prev git hunk      | Gitsigns    |
 | `<leader>n`      | Toggle file tree        | Neo-tree    |
+| `:GradleDownloadSources` | Fetch dependency `-sources.jar` files for `gd` | Kotlin |
 | `:KotlinLspRestart` | Restart kotlin-lsp (re-import the Gradle model) | Kotlin |
 | `:Workspace`     | Re-open tree + terminal 1 + Claude 1 (opened automatically on startup) | Editor |
 | `O` (in tree)    | Open file externally    | Neo-tree    |
@@ -147,6 +150,30 @@ generated jars exist; otherwise the server warns it "Couldn't resolve"
 `android:r` and the app classes jar, and `R.*` references stay unresolved.
 `AndroidManifest.xml`, resource XML, `*.gradle.kts` and `libs.versions.toml`
 are highlighted by the xml, kotlin and toml parsers.
+
+### Library sources
+
+kotlin-lsp always answers `gd` into a library with a compiled `.class`
+location, even when a `-sources.jar` is cached, and its decompiler produces
+stubs whose bodies are `/* compiled code */`. The `jar://` handler in
+`kotlin.lua` first asks `lua/jvm_sources.lua` for the real file:
+
+- it reads the class file's `SourceFile` attribute (multifile facades such as
+  `BuildersKt` are resolved through their `__` part classes);
+- SDK platform classes come from `<sdk>/sources/android-N/`;
+- everything else from an index of every `*-sources.jar` in
+  `~/.gradle/caches/modules-2` (source-set prefixes like `commonMain/` and
+  jars without package directories are handled).
+
+The `gd` wrapper in `init.lua` then puts the cursor on the declaration (the
+server's position refers to the stub). Source buffers are read-only and have
+no LSP attached; when no source is found, the decompiled stub is shown with a
+one-time hint. To fetch sources:
+
+```shell
+:GradleDownloadSources                               # per Gradle project (init script in gradle/)
+sdkmanager "sources;android-35"                      # Android platform classes
+```
 
 ## Tree-sitter
 

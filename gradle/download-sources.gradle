@@ -1,0 +1,28 @@
+// Gradle init script used by :GradleDownloadSources (lua/jvm_sources.lua).
+// Resolves the -sources.jar of every external dependency on each project's
+// compile classpaths so it lands in ~/.gradle/caches, where Neovim finds it.
+allprojects {
+    tasks.register("downloadSources") {
+        doLast {
+            def ids = [] as Set
+            project.configurations.findAll { it.canBeResolved && it.name.toLowerCase().contains("compileclasspath") }.each { cfg ->
+                try {
+                    cfg.incoming.resolutionResult.allComponents.each { c ->
+                        if (c.id instanceof org.gradle.api.artifacts.component.ModuleComponentIdentifier) ids << c.id
+                    }
+                } catch (Exception e) { logger.warn("skip ${cfg.name}: ${e.message}") }
+            }
+            def result = project.dependencies.createArtifactResolutionQuery()
+                .forComponents(ids)
+                .withArtifacts(JvmLibrary, SourcesArtifact)
+                .execute()
+            int n = 0
+            result.resolvedComponents.each { comp ->
+                comp.getArtifacts(SourcesArtifact).each { a ->
+                    if (a instanceof org.gradle.api.artifacts.result.ResolvedArtifactResult) n++
+                }
+            }
+            println("downloadSources ${project.path}: ${n}/${ids.size()} components have sources")
+        }
+    }
+}
