@@ -71,6 +71,7 @@ lua/plugins/
 | `<leader>xd`     | Buffer diagnostics      | Trouble     |
 | `]h` / `[h`      | Next/prev git hunk      | Gitsigns    |
 | `<leader>n`      | Toggle file tree        | Neo-tree    |
+| `:KotlinLspRestart` | Restart kotlin-lsp (re-import the Gradle model) | Kotlin |
 | `:Workspace`     | Re-open tree + terminal 1 + Claude 1 (opened automatically on startup) | Editor |
 | `O` (in tree)    | Open file externally    | Neo-tree    |
 | `E` (in tree)    | Expand/collapse subtree recursively | Neo-tree |
@@ -128,6 +129,24 @@ extract next to the old one, and repoint the symlink.
 Root markers are the Gradle settings/build files. First open of a Gradle
 project triggers a full build import — expect minutes, not seconds; later
 opens are fast.
+
+**The Gradle model is imported once, at server start, and never refreshed.**
+After adding, renaming or moving a module (editing `settings.gradle.kts` or a
+module's build file), the edited files fall outside the stale model and
+library symbols stop resolving — `gd` on an Android/AndroidX class returns
+nothing while project-local symbols may still work. Run `:KotlinLspRestart`
+(Neovim 0.11 has no built-in `:LspRestart`) to attach a fresh server, which
+re-imports.
+
+### Android
+
+Android Gradle projects (e.g. `air/air-viewer`) need nothing extra: kotlin-lsp
+imports AGP modules, including the platform `android.jar` from the SDK named
+in `local.properties` (`sdk.dir`). Build once (`./gradlew assembleDebug`) so the
+generated jars exist; otherwise the server warns it "Couldn't resolve"
+`android:r` and the app classes jar, and `R.*` references stay unresolved.
+`AndroidManifest.xml`, resource XML, `*.gradle.kts` and `libs.versions.toml`
+are highlighted by the xml, kotlin and toml parsers.
 
 ## Tree-sitter
 
