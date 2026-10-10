@@ -53,6 +53,13 @@ vim.api.nvim_set_current_win(edit_win)
 vim.g.statusline_winid = edit_win
 local ind = ui.indicator()
 check(ind:find("C1", 1, true) ~= nil, "indicator renders: " .. ind)
+-- through Neovim's real evaluation (what the screen shows)
+local drawn = vim.api.nvim_eval_statusline(vim.api.nvim_get_option_value("winbar", { win = panel.win_of(buf) }), { winid = panel.win_of(buf), use_winbar = true }).str
+check(drawn:find("Claude 1 working", 1, true) ~= nil, "winbar drawn by Neovim: " .. drawn)
+drawn = vim.api.nvim_eval_statusline(vim.o.statusline, { winid = edit_win }).str
+check(drawn:find("C1 ●", 1, true) ~= nil, "statusline badge drawn on the focused window: " .. drawn)
+drawn = vim.api.nvim_eval_statusline(vim.o.statusline, { winid = panel.win_of(buf) }).str
+check(drawn:find("C1 ●", 1, true) == nil, "no badge on an unfocused window: " .. drawn)
 
 check(vim.wait(2000, function() local s = status.get(1); return s and s.state == "blocked" end, 20), "blocked report received")
 check(status.get(1).kind == "permission", "kind")

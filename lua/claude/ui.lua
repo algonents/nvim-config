@@ -56,6 +56,13 @@ local function short(s)
     return glyph(s.state)
 end
 
+--- Whole statusline (`%!` form): Neovim's default layout with the Claude
+--- segment before the ruler. `%!` is required: with `%{}` items Neovim does
+--- not set g:statusline_winid, so the focused-window check cannot work.
+function M.statusline()
+    return "%<%f %h%w%m%r %=" .. M.indicator() .. "%-14.(%l,%c%V%) %P"
+end
+
 --- Statusline segment: one entry per live slot plus the agent count, only on
 --- the focused window (vim.g.statusline_winid is the window being drawn).
 function M.indicator()
@@ -127,7 +134,7 @@ function M.winbar()
 end
 
 function M.attach_winbar(win)
-    vim.api.nvim_set_option_value("winbar", "%{%v:lua.require'claude.ui'.winbar()%}", { win = win, scope = "local" })
+    vim.api.nvim_set_option_value("winbar", "%!v:lua.require'claude.ui'.winbar()", { win = win, scope = "local" })
 end
 
 -- Notifications ---------------------------------------------------------------
@@ -163,8 +170,7 @@ function M.setup()
     M.setup_highlights()
     local group = vim.api.nvim_create_augroup("ClaudeUI", { clear = true })
     vim.api.nvim_create_autocmd("ColorScheme", { group = group, callback = M.setup_highlights })
-    -- Default statusline with the Claude segment before the ruler.
-    vim.o.statusline = "%<%f %h%w%m%r %=%{%v:lua.require'claude.ui'.indicator()%}%-14.(%l,%c%V%) %P"
+    vim.o.statusline = "%!v:lua.require'claude.ui'.statusline()"
     vim.api.nvim_create_autocmd("BufWinEnter", {
         group = group,
         callback = function(args)
