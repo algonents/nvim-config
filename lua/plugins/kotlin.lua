@@ -25,6 +25,31 @@ vim.lsp.config("kotlin_lsp", {
 
 vim.lsp.enable("kotlin_lsp")
 
+-- kotlin-lsp imports the Gradle model once, at startup, and never re-imports.
+-- After changing settings.gradle(.kts) or a module's build file (adding,
+-- renaming or moving a module), the files you edit fall outside the stale
+-- model and library symbols stop resolving — gd on an Android class returns
+-- nothing. Neovim 0.11 has no built-in :LspRestart, so stop the clients and
+-- re-fire the enable autocmd to attach a fresh server (which re-imports).
+vim.api.nvim_create_user_command("KotlinLspRestart", function()
+    local clients = vim.lsp.get_clients({ name = "kotlin_lsp" })
+    for _, client in ipairs(clients) do
+        client:stop()
+    end
+    vim.wait(10000, function()
+        for _, client in ipairs(clients) do
+            if not client:is_stopped() then return false end
+        end
+        return true
+    end, 100)
+    for _, buf in ipairs(vim.api.nvim_list_bufs()) do
+        if vim.api.nvim_buf_is_loaded(buf) and vim.bo[buf].filetype == "kotlin" then
+            vim.api.nvim_exec_autocmds("FileType", { group = "nvim.lsp.enable", buffer = buf })
+        end
+    end
+    vim.notify("kotlin-lsp restarted — Gradle re-import runs in the background")
+end, { desc = "Restart kotlin-lsp (re-import the Gradle model)" })
+
 -- Definitions inside library jars come back as jar:// (or jrt:// for the
 -- JDK) URIs, which Neovim can't read — the buffer stayed empty and the
 -- cursor jump blew up. The server exposes a "decompile" command for exactly
