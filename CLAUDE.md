@@ -94,6 +94,7 @@ tests/claude_*            -- headless smoke tests for lua/claude and hook.sh
 | `<leader>cx`     | Stop the current/last Claude slot | Claude |
 | `@` (in tree)    | Mention the file under the cursor in Claude | Neo-tree |
 | `:Claude [n] [args]` | Toggle slot n, or launch with CLI args (`:Claude 2 --resume`) | Claude |
+| `:ClaudeMap` / `:ClaudePlan` | Command forms of `<leader>cm` / `<leader>cp` | Claude |
 | `:ClaudeHooksCheck` | Verify the hooks in `~/.claude/settings.json` | Claude |
 | `<Up>/<Down>`    | Move by display line (wrapped) | Editor |
 | `<Home>/<End>`   | Start/end of display line | Editor    |
