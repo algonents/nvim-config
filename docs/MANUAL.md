@@ -127,8 +127,8 @@ above is worth learning, but those three groups carry 80% of the day.
 | Panel | Trigger | Position |
 |---|---|---|
 | Neo-tree (file explorer) | `<Space>n` | Left, 32 cols |
-| Toggleterm 1/2/3 (bash) | `<Space>t1/t2/t3` | Bottom horizontal |
-| Claude 1/2/3 | `<Space>c1/c2/c3` | Right vertical, ~50% width |
+| Terminal 1/2/3 (bash) | `<Space>t1/t2/t3` | Bottom row (plain `:terminal`) |
+| Claude 1/2/3 | `<Space>c1/c2/c3` | Right column, ~30% width; slots 2-3 stack below. Winbar shows the session state; `<Space>cm` opens the agent map |
 | DAP UI (debugger) | `<Space>du` | Right panel (40 cols) + bottom REPL |
 | Trouble (diagnostics list) | `<Space>xx` | Bottom split |
 

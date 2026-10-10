@@ -147,6 +147,15 @@ return {
                             end,
                             desc = "Open externally",
                         },
+                        -- <Space> is toggle_node here, so no <leader> maps in the tree.
+                        ["@"] = {
+                            function(state)
+                                local mention = require("claude.mention")
+                                local text = mention.node(state)
+                                if text then mention.send(nil, text) end
+                            end,
+                            desc = "Mention in Claude",
+                        },
                     },
                 },
             })
@@ -187,7 +196,15 @@ return {
         "folke/which-key.nvim",
         event = "VeryLazy",
         config = function()
-            require("which-key").setup()
+            local wk = require("which-key")
+            wk.setup()
+            wk.add({
+                { "<leader>c", group = "Claude" },
+                { "<leader>d", group = "Debug" },
+                { "<leader>f", group = "Find" },
+                { "<leader>t", group = "Terminal" },
+                { "<leader>x", group = "Trouble" },
+            })
         end,
     },
     {

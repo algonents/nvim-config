@@ -208,27 +208,8 @@ vim.keymap.set("n", "<leader>q", vim.diagnostic.setloclist, { desc = "Diagnostic
 local builtin = require("telescope.builtin")
 -- Telescope opens the selection in the window that was focused when the picker
 -- launched. From a terminal/Claude panel or neo-tree that would replace that
--- panel, so first jump to an editing window: the previous window if it is one,
--- else the first normal (non-floating, buftype "") window in the tab.
-local function focus_edit_window()
-    local function is_edit(win)
-        return vim.api.nvim_win_is_valid(win)
-            and vim.api.nvim_win_get_config(win).relative == ""
-            and vim.bo[vim.api.nvim_win_get_buf(win)].buftype == ""
-    end
-    if is_edit(vim.api.nvim_get_current_win()) then return end
-    local prev = vim.fn.win_getid(vim.fn.winnr("#"))
-    if prev ~= 0 and is_edit(prev) then
-        vim.api.nvim_set_current_win(prev)
-        return
-    end
-    for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
-        if is_edit(win) then
-            vim.api.nvim_set_current_win(win)
-            return
-        end
-    end
-end
+-- panel, so first jump to an editing window (lua/claude/panel.lua).
+local focus_edit_window = require("claude.panel").focus_edit_window
 local function in_edit_window(picker)
     return function()
         focus_edit_window()
@@ -267,56 +248,34 @@ vim.api.nvim_create_autocmd({ "BufEnter", "WinEnter" }, {
     callback = function() vim.cmd("startinsert") end,
 })
 
--- Claude sessions: first one opens as right vertical split (~30% width).
--- Additional ones stack vertically (horizontal splits) inside that right column.
-local claude_bufs = {}
-local function find_window_with_buf(buf)
-    for _, win in ipairs(vim.api.nvim_list_wins()) do
-        if vim.api.nvim_win_get_buf(win) == buf then return win end
-    end
-    return nil
-end
-local function find_any_claude_window()
-    for _, buf in pairs(claude_bufs) do
-        if vim.api.nvim_buf_is_valid(buf) then
-            local win = find_window_with_buf(buf)
-            if win then return win end
-        end
-    end
-    return nil
-end
-local function toggle_claude(id)
-    local buf = claude_bufs[id]
-    if buf and vim.api.nvim_buf_is_valid(buf) then
-        local win = find_window_with_buf(buf)
-        if win then
-            vim.api.nvim_win_close(win, false)
-            return
-        end
-    end
-    local other_claude_win = find_any_claude_window()
-    if other_claude_win then
-        vim.api.nvim_set_current_win(other_claude_win)
-        vim.cmd("belowright split")
-    else
-        vim.cmd("botright vsplit")
-        vim.cmd("vertical resize " .. math.floor(vim.o.columns * 0.3))
-    end
-    if buf and vim.api.nvim_buf_is_valid(buf) then
-        vim.api.nvim_win_set_buf(0, buf)
-    else
-        vim.cmd("terminal claude")
-        claude_bufs[id] = vim.api.nvim_get_current_buf()
-        vim.keymap.set("t", "<Esc>", "<Esc>", {
-            buffer = claude_bufs[id],
-            desc = "Send Esc to Claude",
-        })
-    end
-    vim.cmd("startinsert!")
-end
+-- Claude Code panels (lua/claude): slots 1-3 in a right column with live
+-- status, agent map, mentions. See CLAUDE.md "Claude Code integration".
+require("claude").setup()
+local claude_panel = require("claude.panel")
+local function find_window_with_buf(buf) return claude_panel.win_of(buf) end
+local function find_any_claude_window() return claude_panel.any_window() end
+local function toggle_claude(id) claude_panel.toggle(id) end
 vim.keymap.set("n", "<leader>c1", function() toggle_claude(1) end, { desc = "Toggle Claude 1" })
 vim.keymap.set("n", "<leader>c2", function() toggle_claude(2) end, { desc = "Toggle Claude 2" })
 vim.keymap.set("n", "<leader>c3", function() toggle_claude(3) end, { desc = "Toggle Claude 3" })
+-- Editor <-> Claude focus toggle (VS Code's Ctrl+Esc). Alt chords reach
+-- Neovim from inside Claude, where <Esc> and <Space> belong to Claude.
+vim.keymap.set("n", "<leader>cc", claude_panel.focus_toggle, { desc = "Focus Claude / back to editor" })
+vim.keymap.set({ "n", "i" }, "<A-c>", claude_panel.focus_toggle, { desc = "Focus Claude / back to editor" })
+vim.keymap.set("t", "<A-c>", [[<C-\><C-n><Cmd>lua require("claude.panel").focus_toggle()<CR>]], { desc = "Back to editor" })
+-- Mention the current file (Normal) or selection (Visual) in the prompt
+-- as @path / @path#L5-10 (VS Code's Alt+K); S also focuses Claude.
+vim.keymap.set({ "n", "v" }, "<leader>cs", function() require("claude.mention").send_current() end, { desc = "Mention file/selection in Claude" })
+vim.keymap.set({ "n", "v" }, "<leader>cS", function() require("claude.mention").send_current({ focus = true }) end, { desc = "Mention and focus Claude" })
+vim.keymap.set("n", "<leader>cm", "<Cmd>ClaudeMap<CR>", { desc = "Claude agent map" })
+vim.keymap.set("n", "<leader>cp", "<Cmd>ClaudePlan<CR>", { desc = "Open latest Claude plan" })
+vim.keymap.set("n", "<leader>cr", function() claude_panel.open_free({ "--resume" }) end, { desc = "Claude: resume a session" })
+vim.keymap.set("n", "<leader>cC", function() claude_panel.open_free({ "--continue" }) end, { desc = "Claude: continue last session" })
+vim.keymap.set("n", "<leader>cx", function()
+    local id = claude_panel.current()
+    if id then claude_panel.stop(id) end
+end, { desc = "Stop current Claude slot" })
+vim.keymap.set("n", "<leader>cl", function() require("claude.sessions").pick() end, { desc = "Claude sessions" })
 
 local term_bufs = {}
 local function find_any_term_window()
