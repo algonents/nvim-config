@@ -62,10 +62,14 @@ return {
                 },
             })
 
+            -- Close terminal windows so the DAP UI gets the bottom row, but
+            -- leave the Claude panels (lua/claude) alone.
             local function close_terminals()
+                local panel = require("claude.panel")
                 for _, win in ipairs(vim.api.nvim_list_wins()) do
                     local buf = vim.api.nvim_win_get_buf(win)
-                    if vim.api.nvim_buf_is_valid(buf) and vim.bo[buf].buftype == "terminal" then
+                    if vim.api.nvim_buf_is_valid(buf) and vim.bo[buf].buftype == "terminal"
+                        and not panel.is_claude_buf(buf) then
                         pcall(vim.api.nvim_win_close, win, false)
                     end
                 end
