@@ -121,13 +121,21 @@ ln -s ~/.local/opt/kotlin-lsp/kotlin-server-<build>/bin/intellij-server ~/.local
 
 **EAP builds expire after ~40 days.** When the server suddenly dies with
 "Client kotlin_lsp quit with exit code 7" (stderr: "This build of
-intellij-server has expired"), it is not a config problem — install a newer
-build. The GitHub RELEASES.md links go stale; the VS Code Marketplace
-extension `JetBrains.kotlin-server` updates more often. Find its latest
-version, get the bundled build number (`extension/server/build.txt` in the
-vsix), then fetch the matching standalone tarball from
-`https://download-cdn.jetbrains.com/language-server/kotlin-server/<build>/kotlin-server-<build>.tar.gz`,
-extract next to the old one, and repoint the symlink.
+kotlin-server has expired"), it is not a config problem — install a newer
+build. `kotlin-lsp --version` still prints fine on an expired build; only
+`intellij-server --stdio` exits 7. To update:
+
+1. Take the newest `kotlin-server-<build>.tar.gz` link from
+   <https://github.com/Kotlin/kotlin-lsp/blob/main/RELEASES.md>. If that
+   file lags, the VS Code Marketplace extension `JetBrains.kotlin-server`
+   is updated first; its vsix is a zip with the build number in
+   `extension/server/build.txt` (370 MB, no HTTP range support), and the
+   tarball then lives at
+   `https://download.jetbrains.com/language-server/kotlin-server/<build>/kotlin-server-<build>.tar.gz`
+   (the `download-cdn.jetbrains.com` host answers 404 for these).
+2. Verify with the `.sha256` next to it, extract into
+   `~/.local/opt/kotlin-lsp/`, and repoint the `~/.local/bin/kotlin-lsp`
+   symlink. Delete the old build directory once the new one works.
 
 Root markers are the Gradle settings/build files. First open of a Gradle
 project triggers a full build import — expect minutes, not seconds; later
