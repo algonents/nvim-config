@@ -17,6 +17,9 @@ gradle/download-sources.gradle -- init script behind :GradleDownloadSources
   completion.lua          -- nvim-cmp with LSP, buffer, path, snippet sources
   debugger.lua            -- nvim-dap + nvim-dap-ui
   editor.lua              -- treesitter, telescope (fzf-native), neo-tree, toggleterm, gitsigns, which-key, trouble, tokyonight
+lua/claude/               -- Claude Code integration: panels, live status, agent map, mentions (see below)
+claude/hook.sh            -- Claude Code hook that feeds lua/claude/hooks.lua
+tests/claude_*            -- headless smoke tests for lua/claude and hook.sh
 ```
 
 ## Plugin Stack
@@ -37,7 +40,7 @@ gradle/download-sources.gradle -- init script behind :GradleDownloadSources
 | Git signs      | `lewis6991/gitsigns.nvim`       | Inline blame, hunk navigation              |
 | Keymap help    | `folke/which-key.nvim`          | Keymap discovery popup                     |
 | Diagnostics    | `folke/trouble.nvim`            | Cross-file diagnostics panel               |
-| Terminal       | `akinsho/toggleterm.nvim`       | Horizontal, 3 slots                        |
+| Terminal       | `akinsho/toggleterm.nvim`       | Only behind `<C-\>`; terminals 1-3 and Claude 1-3 are plain `:terminal` buffers (init.lua, lua/claude) |
 | Nested nvim    | `willothy/flatten.nvim`         | `git commit` in a terminal opens in a new tab in this nvim |
 | MD preview     | `iamcco/markdown-preview.nvim`  | Live browser preview via local node server |
 | Theme          | `folke/tokyonight.nvim`         |                                            |
@@ -80,8 +83,19 @@ gradle/download-sources.gradle -- init script behind :GradleDownloadSources
 | `E` (in tree)    | Expand/collapse subtree recursively | Neo-tree |
 | `<leader>mp`     | Toggle markdown preview | Markdown    |
 | `<leader>i`      | Open current file externally | Editor |
-| `<leader>t1/2/3` | Toggle terminal 1/2/3   | ToggleTerm  |
-| `<leader>c1/2/3` | Toggle Claude 1/2/3 (right panel, swaps) | ToggleTerm |
+| `<leader>t1/2/3` | Toggle terminal 1/2/3 (bottom row) | Terminal |
+| `<leader>c1/2/3` | Toggle Claude 1/2/3 (right column; extra slots stack below) | Claude |
+| `<leader>cc` / `<A-c>` | Focus Claude / back to the editor (works from inside Claude) | Claude |
+| `<leader>cs` / `<leader>cS` | Mention current file / Visual selection (`@path#L5-10`) in the prompt; `S` also focuses Claude | Claude |
+| `<leader>cm`     | Agent map: slot states, subagents, background tasks, other sessions | Claude |
+| `<leader>cl`     | Sessions picker (own slots + other Claude sessions; resume external ones) | Claude |
+| `<leader>cr` / `<leader>cC` | `claude --resume` / `claude --continue` in a free slot | Claude |
+| `<leader>cp`     | Open the newest `~/.claude/plans/*.md` | Claude |
+| `<leader>cx`     | Stop the current/last Claude slot | Claude |
+| `@` (in tree)    | Mention the file under the cursor in Claude | Neo-tree |
+| `:Claude [n] [args]` | Toggle slot n, or launch with CLI args (`:Claude 2 --resume`) | Claude |
+| `:ClaudeMap` / `:ClaudePlan` | Command forms of `<leader>cm` / `<leader>cp` | Claude |
+| `:ClaudeHooksCheck` | Verify the hooks in `~/.claude/settings.json` | Claude |
 | `<Up>/<Down>`    | Move by display line (wrapped) | Editor |
 | `<Home>/<End>`   | Start/end of display line | Editor    |
 | `<A-Up/Down/Left/Right>` | Window navigation by geometry; returns to the window you came from (also from terminal/TUI) | Editor |
@@ -224,6 +238,94 @@ Running `git commit` in a `:terminal` (toggleterm) opens the message buffer in a
 If commit-from-terminal regresses, check those three. The `<Esc>` → exit-terminal
 mapping (init.lua) is why a *nested* editor is painful, so the goal is to never nest.
 
+## Claude Code integration
+
+`lua/claude/` turns the Claude panels into something closer to the VS Code
+extension: each slot shows what its session is doing, hidden slots announce
+when they need input or finish, subagents and background tasks are listed in
+an agent map, and files/selections can be pushed into the prompt.
+
+**Status comes from Claude itself.** Claude Code >= 2.1.295 speaks the
+Program Status Protocol (OSC 7501): on start it probes the terminal and, if
+answered, reports `working` / `idle` / `done` / `blocked` (with
+`kind=permission|question|auth`), progress and a title. `lua/claude/init.lua`
+answers the probe from a `TermRequest` autocmd (the reply must be sent
+synchronously, before Neovim's own device-attributes answer, or Claude treats
+the terminal as unsupported) and parses the reports (`osc.lua`) into
+`status.lua`. Nothing to configure; needs no hooks. If a slot's winbar never
+leaves "starting", check `claude --version` and that
+`CLAUDE_CODE_DISABLE_TERMINAL_TITLE` is unset.
+
+**Where it shows.** Claude windows get a winbar
+(`● Claude 1 working 2m · <title>`). The focused window's statusline carries
+one badge per live slot (`C1 ● 2m  C2 ◆ perm  C3 ✓  ⛬2`), colored like VS
+Code's dots: blue = waiting for permission/input, orange = finished while the
+slot was hidden. `vim.notify` fires on every `blocked` and on `done` when the
+slot is not focused. `<leader>cm` opens the agent map.
+
+**Subagents, tasks, sessions come from hooks.** `claude/hook.sh` is a
+bash+jq hook that keeps `$XDG_RUNTIME_DIR/claude-nvim/<session_id>.json`
+(session identity, running agents, background tasks, to-dos, last tool).
+`hooks.lua` watches that directory with `vim.uv.new_fs_event`. Sessions
+launched from a panel are matched to their slot through `NVIM_CLAUDE_SLOT`
+and `$NVIM`, which the claude process inherits from the terminal job; other
+sessions (plain terminals) appear in the map and in `<leader>cl` only. Live
+sessions are also read from Claude's own registry in `~/.claude/sessions/`.
+
+### Clean machine: hooks setup
+
+Needs `jq`. Add this to `~/.claude/settings.json` (user level, so it applies
+in every project), then run `:ClaudeHooksCheck`:
+
+```json
+{
+  "hooks": {
+    "SessionStart":      [{ "hooks": [{ "type": "command", "command": "~/.config/nvim/claude/hook.sh", "async": true }] }],
+    "UserPromptSubmit":  [{ "hooks": [{ "type": "command", "command": "~/.config/nvim/claude/hook.sh", "async": true }] }],
+    "PreToolUse":        [{ "hooks": [{ "type": "command", "command": "~/.config/nvim/claude/hook.sh", "async": true }] }],
+    "PostToolUse":       [{ "hooks": [{ "type": "command", "command": "~/.config/nvim/claude/hook.sh", "async": true }] }],
+    "PermissionRequest": [{ "hooks": [{ "type": "command", "command": "~/.config/nvim/claude/hook.sh", "async": true }] }],
+    "SubagentStart":     [{ "hooks": [{ "type": "command", "command": "~/.config/nvim/claude/hook.sh", "async": true }] }],
+    "SubagentStop":      [{ "hooks": [{ "type": "command", "command": "~/.config/nvim/claude/hook.sh", "async": true }] }],
+    "Stop":              [{ "hooks": [{ "type": "command", "command": "~/.config/nvim/claude/hook.sh", "async": true }] }],
+    "Notification":      [{ "hooks": [{ "type": "command", "command": "~/.config/nvim/claude/hook.sh", "async": true }] }],
+    "TaskCreated":       [{ "hooks": [{ "type": "command", "command": "~/.config/nvim/claude/hook.sh", "async": true }] }],
+    "TaskCompleted":     [{ "hooks": [{ "type": "command", "command": "~/.config/nvim/claude/hook.sh", "async": true }] }],
+    "SessionEnd":        [{ "hooks": [{ "type": "command", "command": "~/.config/nvim/claude/hook.sh" }] }]
+  }
+}
+```
+
+The script exits 0 on anything unexpected and runs asynchronously, so it
+never blocks or alters a session. Without the hooks everything but
+subagents/tasks/sessions still works (status is in-band).
+
+### Inside a Claude panel
+
+`<Esc>` and `<Space>` belong to Claude, so no `<leader>` map works there.
+Leave the panel with `<A-c>`, `<A-Left>` (window navigation) or
+`<C-\><C-n>`. Mentions are typed into the prompt as a bracketed paste with
+no newline, so nothing is submitted; they are refused while the slot is
+`blocked` (a permission prompt would swallow them).
+
+### Tests
+
+```shell
+bash tests/claude_hook.sh
+for t in osc panel hooks; do env -u NVIM nvim --clean --headless -u NONE --cmd "set rtp^=." -S tests/claude_$t.lua; done
+```
+
+The panel test launches a stub program that emits the OSC 7501 probe and
+checks Neovim's reply reaches it before the device-attributes answer.
+
+### Follow-up (not implemented)
+
+`coder/claudecode.nvim` would add the IDE protocol (live selection context,
+Claude's edits as native diffs with accept/reject, neo-tree `@` through
+`:ClaudeCodeTreeAdd`). Hook points: `panel.env()` merges
+`CLAUDE_CODE_SSE_PORT` / `ENABLE_IDE_INTEGRATION`, and `mention.send` can
+switch to the `at_mentioned` notification.
+
 ## Startup Layout
 
 A `VimEnter` autocmd (init.lua) opens the workspace layout on every launch:
@@ -261,6 +363,7 @@ The app name can be anything (e.g. `web`, `nvim-web`, `systems`) — the `nvim-`
 - Plugin manager: lazy.nvim (auto-imports `lua/plugins/*.lua`)
 - Leader: `<Space>`
 - Format-on-save: Rust (`*.rs`), C/C++ (`*.c`, `*.cpp`, `*.h`, `*.hpp`), Kotlin (`*.kt`, `*.kts`)
+- Statusline: Neovim's default layout plus the Claude badge (`lua/claude/ui.lua`); no statusline plugin
 - DAP adapter: codelldb at `~/.local/opt/codelldb/extension/adapter/codelldb`
 - Neovim 0.11+ required (uses native `vim.lsp.config` for C++, Kotlin, TS/JS)
 
