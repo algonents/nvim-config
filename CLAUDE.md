@@ -370,7 +370,7 @@ The app name can be anything (e.g. `web`, `nvim-web`, `systems`) — the `nvim-`
 
 - Plugin manager: lazy.nvim (auto-imports `lua/plugins/*.lua`)
 - Leader: `<Space>`
-- Format-on-save: Rust (`*.rs`), C/C++ (`*.c`, `*.cpp`, `*.h`, `*.hpp`), Kotlin (`*.kt`, `*.kts`)
+- Format-on-save: Rust (`*.rs`), C/C++ (`*.c`, `*.cpp`, `*.h`, `*.hpp`), Kotlin (`*.kt`, `*.kts`) through the LSP; XML (`*.xml`) through `xmllint --format` with 2-space indent (needs `libxml2`; invalid XML is saved unformatted with a warning)
 - Statusline: Neovim's default layout plus the Claude badge (`lua/claude/ui.lua`); no statusline plugin
 - DAP adapter: codelldb at `~/.local/opt/codelldb/extension/adapter/codelldb`
 - Neovim 0.11+ required (uses native `vim.lsp.config` for C++, Kotlin, TS/JS)
