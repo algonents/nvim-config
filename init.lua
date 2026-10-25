@@ -423,11 +423,52 @@ vim.diagnostic.config({
     severity_sort = true,
 })
 
--- Format on save (Rust, C/C++, Kotlin)
+-- Format on save (Rust, C/C++, Kotlin) through the LSP
 vim.api.nvim_create_autocmd("BufWritePre", {
     pattern = { "*.rs", "*.c", "*.cpp", "*.h", "*.hpp", "*.kt", "*.kts" },
     callback = function()
         vim.lsp.buf.format({ async = false })
+    end,
+})
+
+-- Format on save (XML). No XML language server, so xmllint reindents with
+-- 2 spaces. Only the changed hunks are written back, which keeps undo,
+-- marks and the view intact on 100k-line files. A parse error leaves the
+-- buffer untouched and the save proceeds.
+vim.api.nvim_create_autocmd("FileType", {
+    pattern = "xml",
+    callback = function()
+        vim.opt_local.shiftwidth = 2
+        vim.opt_local.tabstop = 2
+    end,
+})
+vim.api.nvim_create_autocmd("BufWritePre", {
+    pattern = "*.xml",
+    callback = function(args)
+        if vim.fn.executable("xmllint") == 0 then return end
+        local buf = args.buf
+        local old = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
+        local text = table.concat(old, "\n") .. "\n"
+        local res = vim.system({ "xmllint", "--format", "--encode", "UTF-8", "-" },
+            { stdin = text, text = true, env = { XMLLINT_INDENT = "  " } }):wait()
+        if res.code ~= 0 then
+            local msg = (res.stderr or ""):match("[^\n]+") or ("exit " .. res.code)
+            vim.notify("xmllint: not formatted: " .. msg, vim.log.levels.WARN)
+            return
+        end
+        local out = res.stdout:gsub("\n$", "")
+        if out .. "\n" == text then return end
+        local new = vim.split(out, "\n", { plain = true })
+        local hunks = vim.diff(text, out .. "\n", { result_type = "indices" })
+        local view = vim.fn.winsaveview()
+        -- Apply bottom-up so earlier line numbers stay valid.
+        for i = #hunks, 1, -1 do
+            local a, na, b, nb = unpack(hunks[i])
+            local start = na == 0 and a or a - 1
+            vim.api.nvim_buf_set_lines(buf, start, start + na, false,
+                vim.list_slice(new, b, b + nb - 1))
+        end
+        vim.fn.winrestview(view)
     end,
 })
 
