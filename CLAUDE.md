@@ -12,6 +12,7 @@ lua/plugins/
   cpp.lua                 -- clangd LSP via native vim.lsp.config (Neovim 0.11+)
   kotlin.lua              -- JetBrains kotlin-lsp via native vim.lsp.config
 lua/jvm_sources.lua       -- real library sources for jar:// class locations (gd)
+lua/tree_search.lua       -- `/` in neo-tree: jump to the best fuzzy match, tree kept
 gradle/download-sources.gradle -- init script behind :GradleDownloadSources
   typescript.lua          -- typescript-language-server (ts_ls) via native vim.lsp.config
   completion.lua          -- nvim-cmp with LSP, buffer, path, snippet sources
@@ -81,6 +82,9 @@ tests/claude_*            -- headless smoke tests for lua/claude and hook.sh
 | `:Workspace`     | Re-open tree + terminal 1 + Claude 1 (opened automatically on startup) | Editor |
 | `O` (in tree)    | Open file externally    | Neo-tree    |
 | `E` (in tree)    | Expand/collapse subtree recursively | Neo-tree |
+| `/` (in tree)    | Jump to the best fuzzy match as you type; tree stays, only the path to the match opens (`<Tab>`/`<S-Tab>` other matches, `<CR>` keep, `<Esc>` back) | Neo-tree |
+| `n` / `N` (in tree) | Next/previous match of the last `/` search | Neo-tree |
+| `g/` (in tree)   | neo-tree's own fuzzy finder (flat result list) | Neo-tree |
 | `<leader>mp`     | Toggle markdown preview | Markdown    |
 | `<leader>i`      | Open current file externally | Editor |
 | `<leader>t1/2/3` | Toggle terminal 1/2/3 (bottom row) | Terminal |
