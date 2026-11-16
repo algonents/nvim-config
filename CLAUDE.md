@@ -98,6 +98,7 @@ tests/claude_*            -- headless smoke tests for lua/claude and hook.sh
 | `:ClaudeHooksCheck` | Verify the hooks in `~/.claude/settings.json` | Claude |
 | `<Up>/<Down>`    | Move by display line (wrapped) | Editor |
 | `<Home>/<End>`   | Start/end of display line | Editor    |
+| `<Esc>`          | Clear search highlight (Normal mode) | Editor |
 | `<A-Up/Down/Left/Right>` | Window navigation by geometry; returns to the window you came from (also from terminal/TUI) | Editor |
 | `<C-w><Up/Down/Left/Right>` | Window navigation (Normal mode, built-in) | Editor |
 | `<Esc>`          | Exit terminal mode      | Terminal    |

@@ -57,6 +57,9 @@ vim.keymap.set("i", "<Up>", "<C-o>gk", { desc = "Up (display line)" })
 vim.keymap.set("i", "<Home>", "<C-o>g<Home>", { desc = "Start of display line" })
 vim.keymap.set("i", "<End>", "<C-o>g<End>", { desc = "End of display line" })
 
+-- <Esc> in Normal mode also clears search highlights (n brings them back)
+vim.keymap.set("n", "<Esc>", "<Cmd>nohlsearch<CR><Esc>", { desc = "Clear search highlight" })
+
 -- Window navigation with Alt+arrows. Terminal mode escapes first so the
 -- chord works from inside TUIs (Claude, lazygit) that capture <C-w>.
 --
