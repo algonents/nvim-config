@@ -121,6 +121,26 @@ return {
                         enabled = false,
                     },
                     use_libuv_file_watcher = true,
+                    window = {
+                        mappings = {
+                            -- Jump to the best match and keep the tree
+                            -- (lua/tree_search.lua); neo-tree's flat-list
+                            -- finder moves to g/.
+                            ["/"] = {
+                                function(state) require("tree_search").start(state) end,
+                                desc = "Search (jump to match)",
+                            },
+                            ["n"] = {
+                                function(state) require("tree_search").step(state, 1) end,
+                                desc = "Next search match",
+                            },
+                            ["N"] = {
+                                function(state) require("tree_search").step(state, -1) end,
+                                desc = "Previous search match",
+                            },
+                            ["g/"] = "fuzzy_finder",
+                        },
+                    },
                 },
                 window = {
                     position = "left",
